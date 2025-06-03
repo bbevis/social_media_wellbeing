@@ -26,7 +26,7 @@ library(dplyr)
 # To set the working directory, please make sure to adapt the correct network drive letter used for the
 # ae_back_extern network drive on your computer (here D).
 
-setwd("D:/03_forschung/01_projekte/12_coco/02_CoCo_UT/02_documentation_osf/02_finaldata/CoCo_UT1")
+setwd("D:/03_forschung/01_projekte/12_coco/02_CoCo_UT/02_documentation_osf/02_finaldata/CoCo_UT2")
 
 
 ### ---------------------------
@@ -37,15 +37,15 @@ setwd("D:/03_forschung/01_projekte/12_coco/02_CoCo_UT/02_documentation_osf/02_fi
 
 ### Step 1: Pre- and Onboarding Survey ###
 
-presurvey <- read.csv("01_presurvey_coco_ut1.csv")
+presurvey <- read.csv("01_presurvey_coco_ut2.csv")
 # onboarding_survey <- read.csv("02_onboarding_survey_coco_ut1.csv")
 
 ### Step 2: Daily Experience Report ###
 
 # daily_survey <- read.csv("03_daily_survey_coco_ut1.csv")
-ema_survey <- read.csv("04_ema_survey_coco_ut1.csv")
-appusage_survey <- read.csv("05_appusage_survey_coco_ut1.csv")
-postsurvey <- read.csv("06_postsurvey_coco_ut1.csv")
+ema_survey <- read.csv("04_ema_survey_coco_ut2.csv")
+appusage_survey <- read.csv("05_appusage_survey_coco_ut2.csv")
+postsurvey <- read.csv("06_postsurvey_coco_ut2.csv")
 
 ### Step 3: Writing Prompts ###
 
@@ -66,7 +66,10 @@ presurvey_select <- select(presurvey,
                            swls_1_t1, swls_2_t1, swls_3_t1, swls_4_t1, swls_5_t1, # Satisfaction with life scale
                            uls_1_t1, uls_2_t1, uls_3_t1, uls_4_t1, uls_5_t1, uls_6_t1, uls_7_t1, uls_8_t1, uls_9_t1, # UCLA Loneliness Scale
                            awb_1_t1, awb_2_t1, awb_3_t1, awb_4_t1, awb_5_t1, awb_6_t1, # Affective Well-Being
-                           demog_ses_t1 # demographic ses 
+                           demog_ses_t1, # demographic ses 
+                           party_affiliation_t1,
+                           voting_2020_t1,
+                           political_orientation
                            ) 
 
 
@@ -130,8 +133,8 @@ postsurvey_select <- select(postsurvey, political_orientation_t2, # IV
                             no_information_w4, no_social_w4, no_productivity_w4,
                             no_education_w4, no_entertainment_w4, no_creativity_w4,
                             no_games_w4, no_shopping_w4, no_utilities_w4, no_other_w4,
-                            appcategory_accuracy_w4
-                            )
+                            appcategory_accuracy_w4,
+                            ksa_1_t2, ksa_2_t2, ksa_3_t2)
 
 
 
