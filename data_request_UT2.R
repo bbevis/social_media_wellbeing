@@ -62,7 +62,8 @@ postsurvey <- read.csv("06_postsurvey_coco_ut2.csv")
 # Please make sure to select the "id" variable from all data sets of interest
 # if you intend to merge data sets.
 
-presurvey_select <- select(presurvey, 
+presurvey_select <- select(id,
+                           presurvey, 
                            swls_1_t1, swls_2_t1, swls_3_t1, swls_4_t1, swls_5_t1, # Satisfaction with life scale
                            uls_1_t1, uls_2_t1, uls_3_t1, uls_4_t1, uls_5_t1, uls_6_t1, uls_7_t1, uls_8_t1, uls_9_t1, # UCLA Loneliness Scale
                            awb_1_t1, awb_2_t1, awb_3_t1, awb_4_t1, awb_5_t1, awb_6_t1, # Affective Well-Being
@@ -75,7 +76,8 @@ presurvey_select <- select(presurvey,
 
 # onboarding_survey_select <- select(onboarding_survey, *please add variable*, *please add variable*)
 # daily_survey_select <- select(daily_survey, *please add variable*, *please add variable*)
-ema_survey_select <- select(ema_survey,
+ema_survey_select <- select(id,
+                            ema_survey,
                             momentary_wellbeing_angry_ema, momentary_wellbeing_worried_ema, momentary_wellbeing_happy_ema,
                             momentary_wellbeing_sad_ema, momentary_wellbeing_stressed_ema, momentary_wellbeing_lonely_ema, 
                             momentary_wellbeing_accepted_ema,
@@ -84,56 +86,104 @@ ema_survey_select <- select(ema_survey,
                             )
 
 
-appusage_survey_select <- select(appusage_survey,
+appusage_survey_select <- select(id,
+                                 appusage_survey,
                                  # Individual social media apps: How much time did you spend using the following apps over the PAST WEEK? 
-                                 hours_facebook_w[1,2,3], hours_twitter_w[1,2,3], hours_tiktok_w[1,2,3],
-                                 hours_instagram_w[1,2,3], hours_youtube_w[1,2,3], hours_reddit_w[1,2,3],
-                                 hours_snapchat_w[1,2,3],
-                                 minutes_facebook_w[1,2,3], minutes_twitter_w[1,2,3], minutes_tiktok_w[1,2,3],
-                                 minutes_instagram_w[1,2,3], minutes_youtube_w[1,2,3], minutes_reddit_w[1,2,3],
-                                 minutes_snapchat_w[1,2,3],
-                                 no_facebook_w[1,2,3], no_twitter_w[1,2,3], no_tiktok_w[1,2,3],
-                                 no_instagram_w[1,2,3], no_youtube_w[1,2,3], no_reddit_w[1,2,3],
-                                 no_snapchat_w[1,2,3],
-                                 appusage_accuracy_w[1,2,3],
+                                 hours_facebook_w1, hours_twitter_w1, hours_tiktok_w1,
+                                 hours_instagram_w1, hours_youtube_w1, hours_reddit_w1,
+                                 hours_snapchat_w1,
+                                 minutes_facebook_w1, minutes_twitter_w1, minutes_tiktok_w1,
+                                 minutes_instagram_w1, minutes_youtube_w1, minutes_reddit_w1,
+                                 minutes_snapchat_w1,
+                                 no_facebook_w1, no_twitter_w1, no_tiktok_w1,
+                                 no_instagram_w1, no_youtube_w1, no_reddit_w1,
+                                 no_snapchat_w1,
+                                 appusage_accuracy_w1,
                                  # App categories: How much time did you spend using the following app categories over the PAST WEEK? 
-                                 hours_information_w[1,2,3], hours_social_w[1,2,3], hours_productivity_w[1,2,3],
-                                 hours_education_w[1,2,3], hours_entertainment_w[1,2,3], hours_creativity_w[1,2,3],
-                                 hours_games_w[1,2,3], hours_shopping_w[1,2,3], hours_utilities_w[1,2,3], hours_other_w[1,2,3],
-                                 minutes_information_w[1,2,3], minutes_social_w[1,2,3], minutes_productivity_w[1,2,3],
-                                 minutes_education_w[1,2,3], minutes_entertainment_w[1,2,3], minutes_creativity_w[1,2,3],
-                                 minutes_games_w[1,2,3], minutes_shopping_w[1,2,3], minutes_utilities_w[1,2,3], minutes_other_w[1,2,3],
-                                 no_information_w[1,2,3], no_social_w[1,2,3], no_productivity_w[1,2,3],
-                                 no_education_w[1,2,3], no_entertainment_w[1,2,3], no_creativity_w[1,2,3],
-                                 no_games_w[1,2,3], no_shopping_w[1,2,3], no_utilities_w[1,2,3], no_other_w[1,2,3],
-                                 appcategory_accuracy_w[1,2,3]
+                                 hours_information_w1, hours_social_w1, hours_productivity_w1,
+                                 hours_education_w1, hours_entertainment_w1, hours_creativity_w1,
+                                 hours_games_w1, hours_shopping_w1, hours_utilities_w1, hours_other_w1,
+                                 minutes_information_w1, minutes_social_w1, minutes_productivity_w1,
+                                 minutes_education_w1, minutes_entertainment_w1, minutes_creativity_w1,
+                                 minutes_games_w1, minutes_shopping_w1, minutes_utilities_w1, minutes_other_w1,
+                                 no_information_w1, no_social_w1, no_productivity_w1,
+                                 no_education_w1, no_entertainment_w1, no_creativity_w1,
+                                 no_games_w1, no_shopping_w1, no_utilities_w1, no_other_w1,
+                                 appusage_accuracy_w1,
+                                 # Individual social media apps: How much time did you spend using the following apps over the PAST WEEK? 
+                                 hours_facebook_w2, hours_twitter_w2, hours_tiktok_w2,
+                                 hours_instagram_w2, hours_youtube_w2, hours_reddit_w2,
+                                 hours_snapchat_w2,
+                                 minutes_facebook_w2, minutes_twitter_w2, minutes_tiktok_w2,
+                                 minutes_instagram_w2, minutes_youtube_w2, minutes_reddit_w2,
+                                 minutes_snapchat_w2,
+                                 no_facebook_w2, no_twitter_w2, no_tiktok_w2,
+                                 no_instagram_w2, no_youtube_w2, no_reddit_w2,
+                                 no_snapchat_w2,
+                                 appusage_accuracy_w2,
+                                 # App categories: How much time did you spend using the following app categories over the PAST WEEK? 
+                                 hours_information_w2, hours_social_w2, hours_productivity_w2,
+                                 hours_education_w2, hours_entertainment_w2, hours_creativity_w2,
+                                 hours_games_w2, hours_shopping_w2, hours_utilities_w2, hours_other_w2,
+                                 minutes_information_w2, minutes_social_w2, minutes_productivity_w2,
+                                 minutes_education_w2, minutes_entertainment_w2, minutes_creativity_w2,
+                                 minutes_games_w2, minutes_shopping_w2, minutes_utilities_w2, minutes_other_w2,
+                                 no_information_w2, no_social_w2, no_productivity_w2,
+                                 no_education_w2, no_entertainment_w2, no_creativity_w2,
+                                 no_games_w2, no_shopping_w2, no_utilities_w2, no_other_w2,
+                                 appusage_accuracy_w2,
+                                 # Individual social media apps: How much time did you spend using the following apps over the PAST WEEK? 
+                                 hours_facebook_w3, hours_twitter_w3, hours_tiktok_w3,
+                                 hours_instagram_w3, hours_youtube_w3, hours_reddit_w3,
+                                 hours_snapchat_w3,
+                                 minutes_facebook_w3, minutes_twitter_w3, minutes_tiktok_w3,
+                                 minutes_instagram_w3, minutes_youtube_w3, minutes_reddit_w3,
+                                 minutes_snapchat_w3,
+                                 no_facebook_w3, no_twitter_w3, no_tiktok_w3,
+                                 no_instagram_w3, no_youtube_w3, no_reddit_w3,
+                                 no_snapchat_w3,
+                                 appusage_accuracy_w3,
+                                 # App categories: How much time did you spend using the following app categories over the PAST WEEK? 
+                                 hours_information_w3, hours_social_w3, hours_productivity_w3,
+                                 hours_education_w3, hours_entertainment_w3, hours_creativity_w3,
+                                 hours_games_w3, hours_shopping_w3, hours_utilities_w3, hours_other_w3,
+                                 minutes_information_w3, minutes_social_w3, minutes_productivity_w3,
+                                 minutes_education_w3, minutes_entertainment_w3, minutes_creativity_w3,
+                                 minutes_games_w3, minutes_shopping_w3, minutes_utilities_w3, minutes_other_w3,
+                                 no_information_w3, no_social_w3, no_productivity_w3,
+                                 no_education_w3, no_entertainment_w3, no_creativity_w3,
+                                 no_games_w3, no_shopping_w3, no_utilities_w3, no_other_w3,
+                                 appusage_accuracy_w3,
+                                 # Individual social media apps: How much time did you spend using the following apps over the PAST WEEK? 
+                                 hours_facebook_w4, hours_twitter_w4, hours_tiktok_w4,
+                                 hours_instagram_w4, hours_youtube_w4, hours_reddit_w4,
+                                 hours_snapchat_w4,
+                                 minutes_facebook_w4, minutes_twitter_w4, minutes_tiktok_w4,
+                                 minutes_instagram_w4, minutes_youtube_w4, minutes_reddit_w4,
+                                 minutes_snapchat_w4,
+                                 no_facebook_w4, no_twitter_w4, no_tiktok_w4,
+                                 no_instagram_w4, no_youtube_w4, no_reddit_w4,
+                                 no_snapchat_w4,
+                                 appusage_accuracy_w4,
+                                 # App categories: How much time did you spend using the following app categories over the PAST WEEK? 
+                                 hours_information_w4, hours_social_w4, hours_productivity_w4,
+                                 hours_education_w4, hours_entertainment_w4, hours_creativity_w4,
+                                 hours_games_w4, hours_shopping_w4, hours_utilities_w4, hours_other_w4,
+                                 minutes_information_w4, minutes_social_w4, minutes_productivity_w4,
+                                 minutes_education_w4, minutes_entertainment_w4, minutes_creativity_w4,
+                                 minutes_games_w4, minutes_shopping_w4, minutes_utilities_w4, minutes_other_w4,
+                                 no_information_w4, no_social_w4, no_productivity_w4,
+                                 no_education_w4, no_entertainment_w4, no_creativity_w4,
+                                 no_games_w4, no_shopping_w4, no_utilities_w4, no_other_w4,
+                                 appusage_accuracy_w4
                                  )
 
 
-postsurvey_select <- select(postsurvey, political_orientation_t2, # IV
+postsurvey_select <- select(id,
+                            postsurvey, political_orientation_t2, # IV
                             swls_1_t2, swls_2_t2, swls_3_t2, swls_4_t2, swls_5_t2, # Satisfaction with life scale
                             uls_1_t2, uls_2_t2, uls_3_t2, uls_4_t2, uls_5_t2, uls_6_t2, uls_7_t2, uls_8_t2, uls_9_t2, # UCLA Loneliness Scale
                             awb_1_t2, awb_2_t2, awb_3_t2, awb_4_t2, awb_5_t2, awb_6_t2, # Affective Well-Being
-                            hours_facebook_w4, hours_twitter_w4, hours_tiktok_w4,
-                            hours_instagram_w4, hours_youtube_w4, hours_reddit_w4,
-                            hours_snapchat_w4,
-                            minutes_facebook_w4, minutes_twitter_w4, minutes_tiktok_w4,
-                            minutes_instagram_w4, minutes_youtube_w4, minutes_reddit_w4,
-                            minutes_snapchat_w4,
-                            no_facebook_w4, no_twitter_w4, no_tiktok_w4,
-                            no_instagram_w4, no_youtube_w4, no_reddit_w4,
-                            no_snapchat_w4,
-                            appusage_accuracy_w4,
-                            hours_information_w4, hours_social_w4, hours_productivity_w4,
-                            hours_education_w4, hours_entertainment_w4, hours_creativity_w4,
-                            hours_games_w4, hours_shopping_w4, hours_utilities_w4, hours_other_w4,
-                            minutes_information_w4, minutes_social_w4, minutes_productivity_w4,
-                            minutes_education_w4, minutes_entertainment_w4, minutes_creativity_w4,
-                            minutes_games_w4, minutes_shopping_w4, minutes_utilities_w4, minutes_other_w4,
-                            no_information_w4, no_social_w4, no_productivity_w4,
-                            no_education_w4, no_entertainment_w4, no_creativity_w4,
-                            no_games_w4, no_shopping_w4, no_utilities_w4, no_other_w4,
-                            appcategory_accuracy_w4,
                             ksa_1_t2, ksa_2_t2, ksa_3_t2)
 
 
