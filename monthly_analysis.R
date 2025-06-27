@@ -14,6 +14,9 @@ library(mediation)
 # library(multilevelmediation)
 library(boot)
 library(purrr)
+library(psych)
+library(pwr)
+
 
 # Read data
 appusage_1 <- read.csv("data/coco_ut1_appusage_survey.csv", header = TRUE, sep = ";")
@@ -39,23 +42,59 @@ demo_spring <- read.csv("data/demographics_spring_anonymized.csv", header = TRUE
 # then reverse-coded so that higher values indicate greater conservatism)
 
 
+
+###############################
+# Chronback alpha
+
+# Combine post_1 and post_2 again, just in case
+post <- bind_rows(post_1, post_2)
+
+# Define item sets for each scale
+swls_items <- c("swls_1_t2", "swls_2_t2", "swls_3_t2", "swls_4_t2", "swls_5_t2")
+uls_items <- c("uls_1_t2", "uls_2_t2", "uls_3_t2", "uls_4_t2", "uls_5_t2",
+               "uls_6_t2", "uls_7_t2", "uls_8_t2", "uls_9_t2")
+awb_items <- c("awb_1_t2", "awb_2_t2", "awb_3_t2", "awb_4_t2", "awb_5_t2", "awb_6_t2")
+
+# Reverse-code items in the ULS and AWB scales
+post <- post %>%
+  mutate(
+    uls_1_t2 = 5 - uls_1_t2,
+    uls_4_t2 = 5 - uls_4_t2,
+    uls_8_t2 = 5 - uls_8_t2,
+    awb_1_t2 = 5 - awb_1_t2,
+    awb_2_t2 = 5 - awb_2_t2,
+    awb_4_t2 = 5 - awb_4_t2,
+  )
+
+# Compute Cronbach's alpha for each scale
+swls_alpha <- psych::alpha(post[ , swls_items], check.keys=TRUE)
+uls_alpha  <- psych::alpha(post[ , uls_items], check.keys=TRUE)
+awb_alpha  <- psych::alpha(post[ , awb_items], check.keys=TRUE)
+
+# Display the reliability results
+swls_alpha$total$raw_alpha  # SWLS
+uls_alpha$total$raw_alpha   # ULS
+awb_alpha$total$raw_alpha   # AWB
+
+####################################################
+
+
 post = bind_rows(post_1, post_2) %>%
   mutate(
     swls_t2 = rowMeans(cbind(swls_1_t2, swls_2_t2, swls_3_t2, swls_4_t2, swls_5_t2), na.rm = TRUE),
     uls_t2 = rowMeans(cbind(5 - uls_1_t2, uls_2_t2, uls_3_t2, 5 - uls_4_t2, uls_5_t2,
                             uls_6_t2, uls_7_t2, 5 - uls_8_t2, uls_9_t2), na.rm = TRUE),
-    awb_t2 = rowMeans(cbind(awb_1_t2, awb_2_t2, 8 - awb_3_t2, awb_4_t2, awb_5_t2, awb_6_t2), na.rm = TRUE),
+    awb_t2 = rowMeans(cbind(5 - awb_1_t2, 5 - awb_2_t2, awb_3_t2, 5 - awb_4_t2, awb_5_t2, awb_6_t2), na.rm = TRUE),
     political_orientation = 8 - political_orientation_t2
   ) %>%
   dplyr::select(id, political_orientation, swls_t2, uls_t2, awb_t2)
-
 
 pre = bind_rows(pre_1, pre_2) %>%
   mutate(
     swls_t1 = rowMeans(cbind(swls_1_t1, swls_2_t1, swls_3_t1, swls_4_t1, swls_5_t1), na.rm = TRUE),
     uls_t1 = rowMeans(cbind(5 - uls_1_t1, uls_2_t1, uls_3_t1, 5 - uls_4_t1, uls_5_t1,
                             uls_6_t1, uls_7_t1, 5 - uls_8_t1, uls_9_t1), na.rm = TRUE),
-    awb_t1 = rowMeans(cbind(awb_1_t1, awb_2_t1, 8 - awb_3_t1, awb_4_t1, awb_5_t1, awb_6_t1), na.rm = TRUE)
+    awb_t1 = rowMeans(cbind(5 - awb_1_t1, 5 - awb_2_t1, awb_3_t1, 5 - awb_4_t1, awb_5_t1, awb_6_t1), na.rm = TRUE)
   ) %>%
   dplyr::select(id, swls_t1, uls_t1, awb_t1, ses = demog_ses_t1, party_affiliation_t1,
          support_election2020_t1, voting_2020_t1)
@@ -237,13 +276,15 @@ attrition_results <- monthly_df %>%
   filter(!is.na(DV_value)) %>%
   group_by(DV, Mediator) %>%
   summarise(
-    t_stat = tryCatch(t.test(DV_value ~ Excluded)$statistic, error = function(e) NA),
-    p_value = tryCatch(t.test(DV_value ~ Excluded)$p.value, error = function(e) NA),
+    t_stat = t.test(DV_value ~ Excluded)$statistic,
+    p_value = t.test(DV_value ~ Excluded)$p.value,
     .groups = "drop"
   )
 
+write.csv(attrition_results, 'monthly_attrition.csv', row.names = FALSE)
+
 ##############################################
-# mediation analysis
+# Descriptive statistics
 
 # Define variables
 outcomes <- c("swls_t2", "uls_t2", "awb_t2")
@@ -251,6 +292,37 @@ outcomes_pre <- c("swls_t1", "uls_t1", "awb_t1")
 mediators <- c("facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat",
                "information", "social", "productivity", "education", "entertainment", 
                "creativity", "games", "shopping", "utilities", "other", "total_platform", "total_activity")
+
+
+# Define all variables used in the models
+all_vars <- unique(c("political_orientation", mediators, outcomes, outcomes_pre))
+
+# Filter relevant columns and compute summary statistics
+summary_stats <- monthly_df %>%
+  dplyr::select(all_of(all_vars)) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value") %>%
+  group_by(Variable) %>%
+  summarise(
+    N = sum(!is.na(Value) & !is.nan(Value)),
+    Mean = mean(Value, na.rm = TRUE),
+    SD = sd(Value, na.rm = TRUE),
+    Min = min(Value, na.rm = TRUE),
+    Max = max(Value, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(across(where(is.numeric), ~round(.x, 2)))
+
+write.csv(summary_stats, 'monthly_descstats.csv')
+
+
+##############################################
+# mediation analysis
+
+# Parameters
+include_Ypre <- FALSE
+include_controls <- FALSE
+control_vars <- c("term", "gender", "ethnicity", "ses")
+n_sims <- 1000
 
 results_list <- list()
 
@@ -262,25 +334,37 @@ for (i in seq_along(outcomes)) {
     exclusion_col <- paste0(M, "_exclude")
     if (!exclusion_col %in% names(monthly_df)) next
     
+    # Build list of control variables
+    control_vec <- character(0)
+    if (include_Ypre) control_vec <- c(control_vec, Y_pre)
+    if (include_controls) control_vec <- c(control_vec, control_vars)
+    
+    all_vars <- unique(c(Y, M, "political_orientation", control_vec))
+    
     model_data <- monthly_df %>%
       filter(!!sym(exclusion_col) == 0) %>%
-      dplyr::select(all_of(c(Y, Y_pre, M, "political_orientation", "term", "gender", "ethnicity", "ses"))) %>%
+      dplyr::select(all_of(all_vars)) %>%
       na.omit()
     
-    # if (nrow(model_data) < 50) next
+    if (nrow(model_data) < 50) next
     
-    controls_str <- paste(c(Y_pre, "term", "gender", "ethnicity", "ses"), collapse = " + ")
-    formula.M <- as.formula(paste(M, "~ political_orientation +", controls_str))
-    formula.Y <- as.formula(paste(Y, "~ political_orientation +", M, "+", controls_str))
-    formula.c <- as.formula(paste(Y, "~ political_orientation +", controls_str))
+    if (length(control_vec) > 0) {
+      controls_str <- paste(control_vec, collapse = " + ")
+      formula.M <- as.formula(paste(M, "~ political_orientation +", controls_str))
+      formula.Y <- as.formula(paste(Y, "~ political_orientation +", M, "+", controls_str))
+      formula.c <- as.formula(paste(Y, "~ political_orientation +", controls_str))
+    } else {
+      formula.M <- as.formula(paste(M, "~ political_orientation"))
+      formula.Y <- as.formula(paste(Y, "~ political_orientation +", M))
+      formula.c <- as.formula(paste(Y, "~ political_orientation"))
+    }
     
     model.M <- lm(formula.M, data = model_data)
     model.Y <- lm(formula.Y, data = model_data)
     model.c <- lm(formula.c, data = model_data)
     
-    med.out <- mediate(model.M, model.Y, treat = "political_orientation", mediator = M, sims = 1000, boot = TRUE)
+    med.out <- mediation::mediate(model.M, model.Y, treat = "political_orientation", mediator = M, sims = n_sims, boot = TRUE)
     
-    # Extract summaries
     sum_M <- summary(model.M)
     sum_Y <- summary(model.Y)
     sum_c <- summary(model.c)
@@ -312,7 +396,7 @@ for (i in seq_along(outcomes)) {
       path_b_r2 = round(sum_Y$r.squared, 2),
       path_b_adj_r2 = round(sum_Y$adj.r.squared, 2),
       
-      # Path c (total effect)
+      # Path c
       path_c = round(coef_c["political_orientation", "Estimate"], 2),
       path_c_se = round(coef_c["political_orientation", "Std. Error"], 2),
       path_c_t = round(coef_c["political_orientation", "t value"], 2),
@@ -321,7 +405,7 @@ for (i in seq_along(outcomes)) {
       path_c_r2 = round(sum_c$r.squared, 2),
       path_c_adj_r2 = round(sum_c$adj.r.squared, 2),
       
-      # Path c' (direct effect)
+      # Path c'
       path_c_prime = round(coef_Y["political_orientation", "Estimate"], 2),
       path_c_prime_se = round(coef_Y["political_orientation", "Std. Error"], 2),
       path_c_prime_t = round(coef_Y["political_orientation", "t value"], 2),
@@ -330,16 +414,16 @@ for (i in seq_along(outcomes)) {
       path_c_prime_r2 = round(sum_Y$r.squared, 2),
       path_c_prime_adj_r2 = round(sum_Y$adj.r.squared, 2),
       
-      # Mediation analysis
-      ACME = med.out$d.avg,
-      ACME_CI_lower = med.out$d.avg.ci[1],
-      ACME_CI_upper = med.out$d.avg.ci[2],
-      ACME_p = med.out$d.avg.p,
+      # Mediation
+      ACME = round(med.out$d.avg, 2),
+      ACME_CI_lower = round(med.out$d.avg.ci[1], 2),
+      ACME_CI_upper = round(med.out$d.avg.ci[2], 2),
+      ACME_p = round(med.out$d.avg.p, 3),
       
-      ADE = med.out$z.avg,
-      ADE_CI_lower = med.out$z.avg.ci[1],
-      ADE_CI_upper = med.out$z.avg.ci[2],
-      ADE_p = med.out$z.avg.p,
+      ADE = round(med.out$z.avg, 2),
+      ADE_CI_lower = round(med.out$z.avg.ci[1], 2),
+      ADE_CI_upper = round(med.out$z.avg.ci[2], 2),
+      ADE_p = round(med.out$z.avg.p, 3),
       
       total_effect = round(med.out$tau.coef, 2),
       total_effect_CI_lower = round(med.out$tau.ci[1], 2),
@@ -359,4 +443,30 @@ for (i in seq_along(outcomes)) {
 # Final output
 results_df <- do.call(rbind, lapply(results_list, as.data.frame))
 
-write.csv(results_df, 'monthly_results.csv', row.names = FALSE)
+write.csv(results_df, 'monthly_results_nocontrols.csv', row.names = FALSE)
+
+
+##############################################
+# power sensitivity analysis
+
+compute_sensitivity <- function(n, k, power = 0.80, sig.level = 0.05) {
+  v <- n - k - 1
+  if (v <= 0) return(NA)
+  f2 <- pwr.f2.test(u = k, v = v, sig.level = sig.level, power = power)$f2
+  round(f2, 3)
+}
+
+# Define model complexity
+num_controls <- 4  # term, gender, ethnicity, ses
+include_Ypre <- TRUE
+num_controls_plus_Ypre <- num_controls + ifelse(include_Ypre, 1, 0)
+
+# Apply sensitivity analysis row-wise
+results_df <- results_df %>%
+  mutate(
+    f2_path_a = mapply(compute_sensitivity, n, k = num_controls_plus_Ypre + 1),
+    f2_path_b = mapply(compute_sensitivity, n, k = num_controls_plus_Ypre + 2),
+    f2_path_c_prime = mapply(compute_sensitivity, n, k = num_controls_plus_Ypre + 1)
+  )
+
+
