@@ -1,0 +1,59 @@
+"sample","variable","category","n","percent"
+"All Wave 3 respondents","gender","Male",2905,50.5
+"All Wave 3 respondents","gender","Female",2845,49.5
+"All Wave 3 respondents","race_ethnicity","White, non-Hispanic",3983,69.3
+"All Wave 3 respondents","race_ethnicity","Black, non-Hispanic",611,10.6
+"All Wave 3 respondents","race_ethnicity","Other, non-Hispanic",420,7.3
+"All Wave 3 respondents","race_ethnicity","Hispanic",736,12.8
+"All Wave 3 respondents","education","Less than high school",217,3.8
+"All Wave 3 respondents","education","High school graduate or equivalent",824,14.3
+"All Wave 3 respondents","education","Vocational/technical school, some college, or associate degree",2219,38.6
+"All Wave 3 respondents","education","Bachelor's degree",1438,25
+"All Wave 3 respondents","education","Postgraduate or professional degree",1052,18.3
+"All Wave 3 respondents","income","Less than $5,000",115,2
+"All Wave 3 respondents","income","$5,000 to $9,999",114,2
+"All Wave 3 respondents","income","$10,000 to $14,999",190,3.3
+"All Wave 3 respondents","income","$15,000 to $19,999",221,3.8
+"All Wave 3 respondents","income","$20,000 to $24,999",269,4.7
+"All Wave 3 respondents","income","$25,000 to $29,999",278,4.8
+"All Wave 3 respondents","income","$30,000 to $34,999",290,5
+"All Wave 3 respondents","income","$35,000 to $39,999",240,4.2
+"All Wave 3 respondents","income","$40,000 to $49,999",512,8.9
+"All Wave 3 respondents","income","$50,000 to $59,999",510,8.9
+"All Wave 3 respondents","income","$60,000 to $74,999",645,11.2
+"All Wave 3 respondents","income","$75,000 to $84,999",287,5
+"All Wave 3 respondents","income","$85,000 to $99,999",591,10.3
+"All Wave 3 respondents","income","$100,000 to $124,999",570,9.9
+"All Wave 3 respondents","income","$125,000 to $149,999",361,6.3
+"All Wave 3 respondents","income","$150,000 to $174,999",199,3.5
+"All Wave 3 respondents","income","$175,000 to $199,999",126,2.2
+"All Wave 3 respondents","income","$200,000 or more",232,4
+"Valid political orientation","gender","Male",2220,51.6
+"Valid political orientation","gender","Female",2080,48.4
+"Valid political orientation","race_ethnicity","White, non-Hispanic",3107,72.3
+"Valid political orientation","race_ethnicity","Black, non-Hispanic",408,9.5
+"Valid political orientation","race_ethnicity","Other, non-Hispanic",307,7.1
+"Valid political orientation","race_ethnicity","Hispanic",478,11.1
+"Valid political orientation","education","Less than high school",133,3.1
+"Valid political orientation","education","High school graduate or equivalent",593,13.8
+"Valid political orientation","education","Vocational/technical school, some college, or associate degree",1614,37.5
+"Valid political orientation","education","Bachelor's degree",1107,25.7
+"Valid political orientation","education","Postgraduate or professional degree",853,19.8
+"Valid political orientation","income","Less than $5,000",82,1.9
+"Valid political orientation","income","$5,000 to $9,999",84,2
+"Valid political orientation","income","$10,000 to $14,999",133,3.1
+"Valid political orientation","income","$15,000 to $19,999",165,3.8
+"Valid political orientation","income","$20,000 to $24,999",190,4.4
+"Valid political orientation","income","$25,000 to $29,999",187,4.3
+"Valid political orientation","income","$30,000 to $34,999",216,5
+"Valid political orientation","income","$35,000 to $39,999",176,4.1
+"Valid political orientation","income","$40,000 to $49,999",396,9.2
+"Valid political orientation","income","$50,000 to $59,999",380,8.8
+"Valid political orientation","income","$60,000 to $74,999",489,11.4
+"Valid political orientation","income","$75,000 to $84,999",222,5.2
+"Valid political orientation","income","$85,000 to $99,999",445,10.3
+"Valid political orientation","income","$100,000 to $124,999",431,10
+"Valid political orientation","income","$125,000 to $149,999",282,6.6
+"Valid political orientation","income","$150,000 to $174,999",158,3.7
+"Valid political orientation","income","$175,000 to $199,999",99,2.3
+"Valid political orientation","income","$200,000 or more",165,3.8

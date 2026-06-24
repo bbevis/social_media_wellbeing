@@ -1,0 +1,3 @@
+"sample","n","n_unique_caseid","age_mean","age_sd","age_min","age_max","n_young_adult","pct_young_adult","n_valid_political_orientation","political_orientation_mean","political_orientation_sd"
+"All Wave 3 respondents",5750,5750,50.495652173913,16.8824808060721,18,80,700,12.2,4300,4.0293023255814,1.81579664267244
+"Valid political orientation",4300,4300,51.8597674418605,16.4478667033111,18,80,418,9.7,4300,4.0293023255814,1.81579664267244

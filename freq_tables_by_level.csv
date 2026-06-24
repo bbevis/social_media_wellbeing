@@ -1,0 +1,58 @@
+"level","variable","category","n","percent"
+"momentary","ethnicity","Other",73784,14.1436718263287
+"momentary","ethnicity","African American/Black",23391,4.48382613696267
+"momentary","ethnicity","Asian/Asian American",130688,25.051612594048
+"momentary","ethnicity","Hispanic/Latino",124253,23.8180859730675
+"momentary","ethnicity","Native American",458,0.0877941246944937
+"momentary","ethnicity","White",169101,32.4150093448986
+"monthly","ethnicity","Other",1489,94.3599493029151
+"monthly","ethnicity","Asian/Asian American",75,4.75285171102662
+"monthly","ethnicity","Hispanic/Latino",5,0.316856780735108
+"monthly","ethnicity","Native American",2,0.126742712294043
+"monthly","ethnicity","Pacific Islander",1,0.0633713561470216
+"monthly","ethnicity","White",6,0.380228136882129
+"weekly","ethnicity","Other",1985,29.00774514102
+"weekly","ethnicity","African American/Black",271,3.96025135174631
+"weekly","ethnicity","Asian/Asian American",1350,19.7281893906182
+"weekly","ethnicity","Hispanic/Latino",1323,19.3336256028058
+"weekly","ethnicity","Native American",5,0.0730673681134006
+"weekly","ethnicity","White",1909,27.8971211456963
+"monthly","gender","Male",1103,69.98730964467
+"monthly","gender","Female",461,29.251269035533
+"monthly","gender","Other",12,0.761421319796954
+"momentary","political_orientation","Very liberal",49120,11.2415350920355
+"momentary","political_orientation","Liberal",140283,32.1049728688114
+"momentary","political_orientation","Somewhat liberal",101281,23.1790292275335
+"momentary","political_orientation","Moderate",80304,18.3782620934613
+"momentary","political_orientation","Somewhat conservative",42812,9.7978949584736
+"momentary","political_orientation","Conservative",20479,4.68679554458051
+"momentary","political_orientation","Very conservative",2672,0.611510215104211
+"monthly","political_orientation","Very liberal",163,10.6327462491846
+"monthly","political_orientation","Liberal",488,31.8330071754729
+"monthly","political_orientation","Somewhat liberal",358,23.3529028049576
+"monthly","political_orientation","Moderate",287,18.7214611872146
+"monthly","political_orientation","Somewhat conservative",151,9.84996738421396
+"monthly","political_orientation","Conservative",75,4.89236790606654
+"monthly","political_orientation","Very conservative",11,0.717547292889759
+"weekly","political_orientation","Very liberal",621,11.3217866909754
+"weekly","political_orientation","Liberal",1764,32.1604375569736
+"weekly","political_orientation","Somewhat liberal",1272,23.1905195989061
+"weekly","political_orientation","Moderate",996,18.158614402917
+"weekly","political_orientation","Somewhat conservative",534,9.73564266180492
+"weekly","political_orientation","Conservative",267,4.86782133090246
+"weekly","political_orientation","Very conservative",31,0.56517775752051
+"momentary","ses","Lower",657,0.47498897476124
+"momentary","ses","Lower middle",4903,3.54470463204621
+"momentary","ses","Middle",27636,19.979901531966
+"momentary","ses","Upper middle",45080,32.5913287400863
+"momentary","ses","Upper",60043,43.4090761211403
+"monthly","ses","Lower",4,0.959232613908873
+"monthly","ses","Lower middle",17,4.07673860911271
+"monthly","ses","Middle",81,19.4244604316547
+"monthly","ses","Upper middle",144,34.5323741007194
+"monthly","ses","Upper",171,41.0071942446043
+"weekly","ses","Lower",8,0.552104899930987
+"weekly","ses","Lower middle",55,3.79572118702553
+"weekly","ses","Middle",291,20.0828157349896
+"weekly","ses","Upper middle",472,32.5741890959282
+"weekly","ses","Upper",623,42.9951690821256

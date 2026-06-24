@@ -1,0 +1,318 @@
+#############################################
+#
+# H3 results table - Social/Digital Media Use on Wellbeing
+#
+#############################################
+
+
+
+library(dplyr)
+library(tidyr)
+library(gt)
+library(magick)
+library(tools)
+
+#############################################
+# Load data
+
+monthly_nc = read.csv('monthly_results_nocontrols.csv')
+weekly_nc = read.csv('weekly_results_nocontrols.csv')
+momentary_nc = read.csv('momentary_results_nocontrols.csv')
+
+monthly_wc = read.csv('monthly_results_withcontrols.csv')
+weekly_wc = read.csv('weekly_results_withcontrols.csv')
+momentary_wc = read.csv('momentary_results_withcontrols.csv')
+
+platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
+activities <- c("information","social","productivity","education","entertainment",
+                "creativity","games","shopping","utilities","other", "total_activity")
+minutes <- c("sm_minutes")
+
+#############################################
+
+h3_df <- monthly_nc %>%
+  dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+  mutate(level = 'Monthly', controls = FALSE) %>%
+  bind_rows(
+    weekly_nc %>%
+      dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+      mutate(level = 'Weekly',controls = FALSE)) %>%
+  bind_rows(
+    momentary_nc %>%
+      dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+      mutate(level = 'Momentary', controls = FALSE)) %>%
+  bind_rows(monthly_wc %>%
+              dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+              mutate(level = 'Monthly', controls = TRUE)) %>%
+  bind_rows(
+    weekly_wc %>%
+      dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+      mutate(level = 'Weekly', controls = TRUE)) %>%
+  bind_rows(
+    momentary_wc %>%
+      dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+      mutate(level = 'Momentary', controls = TRUE)) %>%
+  filter(mediator %in% c(platforms, minutes)) %>%
+  group_by(mediator, level, outcome, controls) %>%
+  summarise(
+    m   = mean(path_b),
+    lwr = mean(path_b_CI_lower, na.rm = TRUE),
+    upr = mean(path_b_CI_upper, na.rm = TRUE),
+    p   = mean(path_b_p),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    mediator_raw = mediator,
+    level = factor(level, levels = c("Momentary","Weekly","Monthly")),
+    sig   = p <= 0.05,
+    type  = case_when(
+      mediator %in% platforms  ~ "Platform",
+      mediator %in% activities ~ "Activity",
+      TRUE ~ "Rest"
+    ),
+    mediator = case_when(
+      mediator == "total_platform"  ~ "Social Media",
+      mediator == "total_activity"  ~ "All Apps",
+      mediator == "sm_minutes"  ~ "Social Media",
+      TRUE ~ mediator
+    ),
+    outcome = dplyr::recode(
+      outcome,
+      "awb_momentary" = "Affective Wellbeing",
+      "awb_t2"        = "Affective Wellbeing",
+      "awb_week"      = "Affective Wellbeing",
+      "swls_t2"       = "Life Satisfaction",
+      "uls_t2"        = "Lonely (r)",
+      "angry_rev"     = "Angry (r)",
+      "worried_rev"   = "Worried (r)",
+      "happy"         = "Happy",
+      "sad_rev"       = "Sad (r)",
+      "stressed_rev"  = "Stressed (r)",
+      "lonely_rev"    = "Lonely (r)",
+      "accepted"      = "Accepted"
+    ),
+    mediator = tools::toTitleCase(mediator),
+    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
+  )
+
+
+outcome_order <- c(
+  "Affective Wellbeing",
+  "Life Satisfaction",
+  "Accepted",
+  "Happy",
+  "Angry (r)",
+  "Lonely (r)",
+  "Sad (r)",
+  "Stressed (r)",
+  "Worried (r)"
+)
+
+mediator_order <- c(
+  "Social Media",
+  "All Apps",
+  "Creativity", "Education", "Entertainment", "Games", "Information",
+  "Other", "Productivity", "Shopping", "Social", "Utilities",
+  "Social Media",
+  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
+)
+mediator_order <- unique(mediator_order)
+
+h3_df = h3_df %>%
+  mutate(mediator = factor(mediator, levels = mediator_order)) %>%
+  mutate(outcome = factor(outcome, levels = outcome_order)) %>%
+  filter(!mediator%in%c("All Apps",
+                        "Creativity", "Education", "Entertainment", "Games", "Information",
+                        "Other", "Productivity", "Shopping", "Social", "Utilities"))
+
+
+#############################################
+# Prepare data for gt table
+
+h3_for_gt <- h3_df %>%
+  mutate(
+    est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr),
+    p_fmt  = sprintf("%.3f", p),
+    controls_label = ifelse(controls, "with_controls", "without_controls")
+  ) %>%
+  dplyr::select(mediator_raw, mediator, outcome, level, controls_label, est_ci, p_fmt) %>%
+  pivot_wider(
+    names_from  = controls_label,
+    values_from = c(est_ci, p_fmt),
+    names_sep   = "_"
+  ) %>%
+  # Remove leading zeros everywhere (ACME + CI + p-values)
+  mutate(across(everything(),
+                ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
+  arrange(level, mediator, outcome)
+
+
+###############################################################
+# DEFINE COMPOSITE VS SINGLE OUTCOMES
+
+
+composite_outcomes <- c(
+  "Affective Wellbeing",
+  "Life Satisfaction"
+)
+
+single_outcomes <- c(
+  "Accepted", "Angry (r)", "Happy", "Lonely (r)",
+  "Sad (r)", "Stressed (r)", "Worried (r)"
+)
+
+h3_left  <- h3_for_gt %>% filter(outcome %in% composite_outcomes)
+h3_right <- h3_for_gt %>% filter(outcome %in% single_outcomes)
+
+#############################################
+# Create gt table
+
+make_h3_table <- function(df_input) {
+  
+  df_input %>%
+    # ensure ordering
+    mutate(
+      level    = factor(level,    levels = c("Momentary","Weekly","Monthly")),
+      mediator = factor(mediator, levels = mediator_order),
+      outcome  = factor(outcome,  levels = outcome_order)
+    ) %>%
+    arrange(level, mediator, outcome) %>%
+    
+    # ----- add one mediator "header" row per level × mediator -----
+  {
+    base <- .
+    
+    headers <- base %>%
+      distinct(level, mediator) %>%
+      mutate(
+        outcome = NA,
+        est_ci_without_controls = "",
+        p_fmt_without_controls  = "",
+        est_ci_with_controls    = "",
+        p_fmt_with_controls     = "",
+        row_type = "mediator"
+      )
+    
+    rows <- base %>%
+      mutate(row_type = "outcome")
+    
+    bind_rows(headers, rows)
+  } %>%
+    
+    arrange(level, mediator, row_type, outcome) %>%
+    
+    # ----- single stub column: mediator vs outcome label -----
+  mutate(
+    stub = ifelse(
+      row_type == "mediator",
+      as.character(mediator),   # mediator label
+      as.character(outcome)     # outcome label
+    )
+  ) %>%
+    
+    # mediator rows: make stats blank (not "NA")
+    mutate(
+      est_ci_without_controls = ifelse(row_type == "mediator", "", est_ci_without_controls),
+      p_fmt_without_controls  = ifelse(row_type == "mediator", "", p_fmt_without_controls),
+      est_ci_with_controls    = ifelse(row_type == "mediator", "", est_ci_with_controls),
+      p_fmt_with_controls     = ifelse(row_type == "mediator", "", p_fmt_with_controls)
+    ) %>%
+    
+    dplyr::select(
+      level, mediator, outcome, row_type, stub,
+      est_ci_without_controls, p_fmt_without_controls,
+      est_ci_with_controls,     p_fmt_with_controls
+    ) %>%
+    
+    # build gt table
+  gt(rowname_col = "stub", groupname_col = "level") %>%
+    
+    # hide helper columns – still usable in `rows =` conditions
+    cols_hide(c(mediator, outcome, row_type)) %>%
+    
+    # column labels
+    cols_label(
+      est_ci_without_controls = "Estimate [95% CI]",
+      p_fmt_without_controls  = md("*p*"),
+      est_ci_with_controls    = "Estimate [95% CI]",
+      p_fmt_with_controls     = md("*p*")
+    ) %>%
+    
+    # spanners
+    tab_spanner(
+      label   = "Without Covariates",
+      columns = c(est_ci_without_controls, p_fmt_without_controls)
+    ) %>%
+    tab_spanner(
+      label   = "With Covariates",
+      columns = c(est_ci_with_controls, p_fmt_with_controls)
+    ) %>%
+    
+    # stub left, numbers center
+    cols_align("center") %>%
+    tab_style(
+      style = cell_text(align = "left"),
+      locations = cells_stub()
+    ) %>%
+    
+    # bold level row-group labels
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_row_groups()
+    ) %>%
+    
+    # INDENT + BOLD MEDIATORS ONLY
+    tab_style(
+      style = cell_text(weight = "bold", indent = px(20)),
+      locations = cells_stub(rows = row_type == "mediator" &
+                               !(stub == "Social Media" & level == "Momentary"))
+    ) %>%
+    
+    # INDENT OUTCOMES (NO BOLD)
+    tab_style(
+      style = cell_text(indent = px(40)),
+      locations = cells_stub(rows = row_type == "outcome")
+    ) %>%
+    
+    # general table options
+    tab_options(
+      table.font.size  = px(25),
+      table.font.names = "Helvetica, Arial",
+      data_row.padding = px(4),
+      table.width      = pct(40),
+      heading.border.bottom.style       = "solid",
+      column_labels.border.top.style    = "solid",
+      column_labels.border.bottom.style = "solid",
+      table.border.top.style            = "none",
+      table.border.bottom.style         = "none",
+      table_body.hlines.style           = "none",
+      table_body.vlines.style           = "none",
+      stub.border.style                 = "none",
+      row_group.border.top.style        = "none",
+      row_group.border.bottom.style     = "none"
+    )
+}
+
+
+
+###############################################################
+# BUILD TABLE A & B
+
+
+h3_gt_left  <- make_h3_table(h3_left)  %>%
+  tab_header(title = md("**A. Composite Wellbeing Measures**"))
+
+h3_gt_right <- make_h3_table(h3_right) %>%
+  tab_header(title = md("**B. Single-Item Wellbeing Measures**"))
+
+# SAVE BOTH TABLES
+gtsave(h3_gt_left,  "Plots/table_h3_A.png", vwidth = 2400)
+gtsave(h3_gt_right, "Plots/table_h3_B.png", vwidth = 2400)
+
+# COMBINE IMAGES INTO ONE PNG
+img_A <- image_read("Plots/table_h3_A.png")
+img_B <- image_read("Plots/table_h3_B.png")
+
+combined_img <- image_append(c(img_A, img_B), stack = FALSE)
+
+image_write(combined_img, "Plots/tables_s4.png")
