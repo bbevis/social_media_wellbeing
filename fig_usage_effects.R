@@ -6,30 +6,31 @@ library(ggh4x)
 library(ggrepel)
 library(stringr)
 
-monthly_res = read.csv('monthly_results_nocontrols.csv')
-weekly_res = read.csv('weekly_results_nocontrols.csv')
-momentary_res = read.csv('momentary_results_nocontrols.csv')
+monthly_res = read.csv('monthly_results_withcontrols.csv')
+weekly_res = read.csv('weekly_results_withcontrols.csv')
+momentary_res = read.csv('momentary_results_withcontrols.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity")
+                "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
 
 mediator_order <- c(
+  "Social Media",
   "Facebook",
-  "Twitter",
-  "TikTok",
   "Instagram",
-  "YouTube",
   "Reddit",
   "Snapchat",
+  "TikTok",
+  "Twitter",
+  "YouTube",
   "Information",
-  "Social Media",
   "Productivity",
   "Education",
   "Entertainment",
   "Creativity",
   "Games",
+  "Health",
   "Shopping",
   "Utilities",
   "Other",
@@ -41,55 +42,56 @@ outcome_labels <- c(
   "awb_week" = "Affective Wellbeing",
   "awb_t2" = "Affective Wellbeing",
   "swls_t2" = "Life Satisfaction",
-  "uls_t2" = "Loneliness",
+  "uls_t2" = "Lonely (r)",
   "accepted" = "Accepted",
-  "angry_rev" = "Anger",
-  "happy" = "Happiness",
-  "lonely_rev" = "Loneliness",
-  "sad_rev" = "Sadness",
-  "stressed_rev" = "Stress",
-  "worried_rev" = "Worry"
+  "angry_rev" = "Angry (r)",
+  "happy" = "Happy",
+  "lonely_rev" = "Lonely (r)",
+  "sad_rev" = "Sad (r)",
+  "stressed_rev" = "Stressed (r)",
+  "worried_rev" = "Worried (r)"
 )
 
 outcome_order <- c(
   "Affective Wellbeing",
   "Life Satisfaction",
-  "Loneliness",
   "Accepted",
-  "Anger",
-  "Happiness",
-  "Sadness",
-  "Stress",
-  "Worry"
+  "Angry (r)",
+  "Happy",
+  "Lonely (r)",
+  "Sad (r)",
+  "Stressed (r)",
+  "Worried (r)"
 )
 
 outcome_shape_vals <- c(
   "Affective Wellbeing" = 16,
   "Life Satisfaction" = 17,
-  "Loneliness" = 15,
   "Accepted" = 5,
-  "Anger" = 3,
-  "Happiness" = 4,
-  "Sadness" = 8,
-  "Stress" = 7,
-  "Worry" = 9
+  "Angry (r)" = 3,
+  "Happy" = 4,
+  "Lonely (r)" = 6,
+  "Sad (r)" = 8,
+  "Stressed (r)" = 7,
+  "Worried (r)" = 9
 )
 
 color_palette <- c(
-  "Facebook" = "#0072B2",
-  "Twitter" = "#56B4E9",
-  "TikTok" = "#010101",
-  "Instagram" = "#CC79A7",
+  "Facebook" = "#1877F2",
+  "Twitter" = "#F28E2B",
+  "TikTok" = "#8A3FFC",
+  "Instagram" = "#C13584",
   "YouTube" = "#D55E00",
   "Reddit" = "#E41A1C",
-  "Snapchat" = "#F0E442",
-  "Social Media" = "#7B3294",
+  "Snapchat" = "#F0C808",
+  "Social Media" = "#009E9A",
   "Information" = "#332288",
   "Productivity" = "#88CCEE",
-  "Education" = "#1B9E77",
+  "Education" = "#F0E442",
   "Entertainment" = "#AA4499",
   "Creativity" = "#117733",
   "Games" = "#999933",
+  "Health" = "#CC6677",
   "Shopping" = "#DDCC77",
   "Utilities" = "#E69F00",
   "Other" = "#882255",
@@ -100,13 +102,16 @@ color_palette <- c(
 
 bubble_df <- bind_rows(
   monthly_res %>%
-    dplyr::select(mediator, outcome, path_a, path_b, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
+    dplyr::select(mediator, outcome, path_a, path_b, path_a_p, path_b_p,
+                  prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
     mutate(level = "Monthly"),
   weekly_res %>%
-    dplyr::select(mediator, outcome,path_a, path_b, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
+    dplyr::select(mediator, outcome, path_a, path_b, path_a_p, path_b_p,
+                  prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
     mutate(level = "Weekly"),
   momentary_res %>%
-    dplyr::select(mediator, outcome,path_a, path_b, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
+    dplyr::select(mediator, outcome, path_a, path_b, path_a_p, path_b_p,
+                  prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
     mutate(level = "Momentary")
 ) %>%
   # keep mediators you care about across platforms, activities, and total social media time
@@ -125,20 +130,27 @@ bubble_df <- bind_rows(
       mediator,
       "Tiktok" = "TikTok",
       "Youtube" = "YouTube"
-    )
+    ),
+    sig_row = path_a_p <= 0.05 &
+      path_b_p <= 0.05 &
+      !(ACME_CI_lower < 0 & ACME_CI_upper > 0) &
+      is.finite(ACME_CI_lower) &
+      is.finite(ACME_CI_upper)
   ) %>%
   group_by(outcome, mediator, level) %>%
   summarise(
     a    = mean(path_a,         na.rm = TRUE),  # Path A (x)
     b    = mean(path_b,         na.rm = TRUE),  # Path B to Overall WB (y)
+    a_p  = mean(path_a_p,       na.rm = TRUE),
+    b_p  = mean(path_b_p,       na.rm = TRUE),
     prop_med = mean(prop_mediated,           na.rm = TRUE),  # bubble size
     lwr  = mean(ACME_CI_lower,  na.rm = TRUE),
     upr  = mean(ACME_CI_upper,  na.rm = TRUE),
+    sig  = all(sig_row, na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(
-    sig_prop_med = !(lwr < 0 & upr > 0) & is.finite(lwr) & is.finite(upr),
-    color_var = if_else(sig_prop_med, as.character(mediator), "n.s.")
+    color_var = if_else(sig, as.character(mediator), "n.s.")
   ) %>%
   filter(is.finite(a), is.finite(b), is.finite(prop_med))
 
@@ -192,21 +204,17 @@ p <- ggplot(bubble_df, aes(x = a, y = b)) +
   scale_x_continuous(limits = c(-x_limit, x_limit),
                      breaks = seq(-x_limit, x_limit, by = 0.1),
                      labels = axis_labels) +
-  facet_wrap(~ level, ncol = 1) +
   labs(
     x = "Liberalism                                       Conservatism\n\nAssociations between Political Orientation and Social/Digital Media Use",
-    y = "Associations between Social/Digital Media Use and Wellbeing"
-  ) +
+    y = "Associations between Social/Digital Media Use and Wellbeing\n\nLower wellbeing                              Higher wellbeing"
+      ) +
   theme_clean +
   theme(panel.grid.minor = element_blank(),
         panel.grid.major.y = element_blank(),
-        panel.spacing.y = unit(2.2, "lines"),
         axis.text.x = element_text(size = 20),
         axis.text.y = element_text(size = 20),
         axis.title.x = element_text(size = 23, lineheight = 1.05, margin = margin(t = 14)),
         axis.title.y = element_text(size = 23, lineheight = 1.05, margin = margin(r = 14)),
-        strip.text = element_text(size = 22, face = "bold", hjust = 0.5),
-        strip.background = element_blank(),
         legend.position = "right",
         legend.text = element_text(size = 17),
         legend.title = element_text(size = 18),
@@ -214,4 +222,4 @@ p <- ggplot(bubble_df, aes(x = a, y = b)) +
         plot.margin = margin(t = 18, r = 18, b = 18, l = 18))
 
 
-ggsave("plots/mediation_bubble_map.png", plot = p, width = 15, height = 18, dpi = 300)
+ggsave("plots/mediation_bubble_map.png", plot = p, width = 15, height = 10, dpi = 300)

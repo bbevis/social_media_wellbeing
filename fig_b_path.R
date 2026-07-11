@@ -12,13 +12,13 @@ library(ggstance)
 library(wesanderson)
 library(stringr)
 
-monthly_res = read.csv('monthly_results_nocontrols.csv')
-weekly_res = read.csv('weekly_results_nocontrols.csv')
-momentary_res = read.csv('momentary_results_nocontrols.csv')
+monthly_res = read.csv('monthly_results_withcontrols.csv')
+weekly_res = read.csv('weekly_results_withcontrols.csv')
+momentary_res = read.csv('momentary_results_withcontrols.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity")
+                "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
 
 plot_df <- monthly_res %>%
@@ -91,7 +91,7 @@ outcome_order <- c(
 mediator_order <- c(
   "Social Media Apps (Total)",
   "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Information",
+  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
   "Other", "Productivity", "Shopping", "Social", "Utilities",
   "Social Media Apps (Included)",
   "Facebook", "Instagram", "Reddit", "Snapchat", "Tiktok", "Twitter", "Youtube"
@@ -115,7 +115,7 @@ plot_df <- plot_df %>%
 # Exclude shopping and utilities due to small size
 plot_df <- plot_df %>%
   filter(!mediator%in%c("All Apps",
-                        "Creativity", "Education", "Entertainment", "Games", "Information",
+                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
                         "Other", "Productivity", "Shopping", "Social", "Utilities"))
 
 # Positions for separators between rows

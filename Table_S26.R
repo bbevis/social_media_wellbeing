@@ -87,7 +87,8 @@ path_c_rows <- age_paths %>%
       interaction_ci_high
     ),
     p_fmt = format_p(interaction_p),
-    p_fdr_fmt = format_p(interaction_p_fdr)
+    p_fdr_fmt = format_p(interaction_p_fdr),
+    sig = interaction_p_fdr <= 0.05
   ) %>%
   arrange(outcome_label) %>%
   dplyr::select(
@@ -96,7 +97,8 @@ path_c_rows <- age_paths %>%
     row_label,
     est_ci,
     p_fmt,
-    p_fdr_fmt
+    p_fdr_fmt,
+    sig
   )
 
 path_a_rows <- age_paths %>%
@@ -112,7 +114,8 @@ path_a_rows <- age_paths %>%
       interaction_ci_high
     ),
     p_fmt = format_p(interaction_p),
-    p_fdr_fmt = format_p(interaction_p_fdr)
+    p_fdr_fmt = format_p(interaction_p_fdr),
+    sig = interaction_p_fdr <= 0.05
   ) %>%
   arrange(row_label) %>%
   dplyr::select(
@@ -121,7 +124,8 @@ path_a_rows <- age_paths %>%
     row_label,
     est_ci,
     p_fmt,
-    p_fdr_fmt
+    p_fdr_fmt,
+    sig
   )
 
 path_b_data <- age_paths %>%
@@ -142,7 +146,8 @@ path_b_data <- age_paths %>%
       interaction_ci_high
     ),
     p_fmt = format_p(interaction_p),
-    p_fdr_fmt = format_p(interaction_p_fdr)
+    p_fdr_fmt = format_p(interaction_p_fdr),
+    sig = interaction_p_fdr <= 0.05
   )
 
 path_b_headers <- path_b_data %>%
@@ -152,16 +157,17 @@ path_b_headers <- path_b_data %>%
     row_label = as.character(platform),
     est_ci = "",
     p_fmt = "",
-    p_fdr_fmt = ""
+    p_fdr_fmt = "",
+    sig = FALSE
   )
 
 path_b_rows <- bind_rows(
   path_b_headers,
-  path_b_data %>% dplyr::select(path_label, platform, row_type, row_label, est_ci, p_fmt, p_fdr_fmt)
+  path_b_data %>% dplyr::select(path_label, platform, row_type, row_label, est_ci, p_fmt, p_fdr_fmt, sig)
 ) %>%
   mutate(row_type = factor(row_type, levels = c("platform", "measure"))) %>%
   arrange(platform, row_type, row_label) %>%
-  dplyr::select(path_label, row_type, row_label, est_ci, p_fmt, p_fdr_fmt)
+  dplyr::select(path_label, row_type, row_label, est_ci, p_fmt, p_fdr_fmt, sig)
 
 table_df <- bind_rows(path_c_rows, path_a_rows, path_b_rows) %>%
   mutate(path_label = factor(path_label, levels = path_order))
@@ -181,6 +187,10 @@ table_s26 <- table_df %>%
   cols_align("left", columns = row_label) %>%
   tab_style(
     style = cell_text(weight = "bold"),
+    locations = cells_body(rows = sig, columns = c(est_ci, p_fmt, p_fdr_fmt))
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
     locations = cells_row_groups()
   ) %>%
   tab_style(
@@ -195,7 +205,7 @@ table_s26 <- table_df %>%
     style = cell_text(indent = px(30)),
     locations = cells_body(rows = row_type == "measure" & path_label == "Path b: Social Media Use X Wellbeing", columns = row_label)
   ) %>%
-  cols_hide(row_type) %>%
+  cols_hide(c(row_type, sig)) %>%
   tab_options(
     table.font.size = px(24),
     table.font.names = "Helvetica, Arial",

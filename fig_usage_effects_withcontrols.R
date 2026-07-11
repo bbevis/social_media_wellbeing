@@ -12,7 +12,7 @@ momentary_res = read.csv('momentary_results_withcontrols.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity")
+                "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
 
 wb_outcome <- c(Monthly = "awb_t2", Weekly = "awb_week", Momentary = "awb_momentary")

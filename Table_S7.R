@@ -15,53 +15,31 @@ library(magick)
 #############################################
 # Load data
 
-monthly_nc = read.csv('monthly_results_nocontrols.csv')
-weekly_nc = read.csv('weekly_results_nocontrols.csv')
-momentary_nc = read.csv('momentary_results_nocontrols.csv')
-
 monthly_wc = read.csv('monthly_results_withcontrols.csv')
 weekly_wc = read.csv('weekly_results_withcontrols.csv')
 momentary_wc = read.csv('momentary_results_withcontrols.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity")
+                "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
 
 #############################################
 # H4 table
 
-h4_df = monthly_nc %>%
+h4_df = monthly_wc %>%
   dplyr::select(mediator, outcome, ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
-  mutate(level = 'Monthly',
-         controls = FALSE) %>%
-  bind_rows(
-    weekly_nc %>%
-      dplyr::select(mediator, outcome, ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
-      mutate(level = 'Weekly',
-             controls = FALSE)) %>%
-  bind_rows(
-    momentary_nc %>%
-      dplyr::select(mediator, outcome, ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
-      mutate(level = 'Momentary',
-             controls = FALSE)) %>%
-  bind_rows(
-    monthly_wc %>%
-      dplyr::select(mediator, outcome, ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
-      mutate(level = 'Monthly',
-             controls = TRUE)) %>%
+  mutate(level = 'Monthly') %>%
   bind_rows(
     weekly_wc %>%
       dplyr::select(mediator, outcome, ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
-      mutate(level = 'Weekly',
-             controls = TRUE)) %>%
+      mutate(level = 'Weekly')) %>%
   bind_rows(
     momentary_wc %>%
       dplyr::select(mediator, outcome, ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper) %>%
-      mutate(level = 'Momentary',
-             controls =TRUE)) %>%
+      mutate(level = 'Momentary')) %>%
   filter(mediator %in% c(activities, platforms, minutes)) %>%
-  group_by(mediator, level, outcome, controls) %>%
+  group_by(mediator, level, outcome) %>%
   summarise(
     m   = mean(ACME),
     lwr = mean(ACME_CI_lower, na.rm = TRUE),
@@ -72,7 +50,7 @@ h4_df = monthly_nc %>%
   mutate(
     mediator_raw = mediator,
     level = factor(level, levels = c("Momentary","Weekly","Monthly")),
-    sig   = p <= 0.05,
+    sig   = !(lwr < 0 & upr > 0) & is.finite(lwr) & is.finite(upr),
     type  = case_when(
       mediator %in% platforms  ~ "Platform",
       mediator %in% activities ~ "Activity",
@@ -119,7 +97,7 @@ outcome_order <- c(
 mediator_order <- c(
   "Social Media",
   "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Information",
+  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
   "Other", "Productivity", "Shopping", "Social", "Utilities",
   "Social Media",
   "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
@@ -142,16 +120,11 @@ h4_for_gt <- h4_df %>%
   mutate(
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr),
     p_fmt  = sprintf("%.2f%%", p * 100),
-    controls_label = ifelse(controls, "with_controls", "without_controls")
+    sig = sig
   ) %>%
-  dplyr::select(mediator_raw, mediator, outcome, level, controls_label, est_ci, p_fmt) %>%
-  pivot_wider(
-    names_from  = controls_label,
-    values_from = c(est_ci, p_fmt),
-    names_sep   = "_"
-  ) %>%
+  dplyr::select(mediator_raw, mediator, outcome, level, est_ci, p_fmt, sig) %>%
   # Remove leading zeros everywhere (ACME + CI + p-values)
-  mutate(across(everything(),
+  mutate(across(where(is.character),
                 ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
   arrange(level, mediator, outcome)
 
@@ -200,10 +173,9 @@ make_h4_table <- function(df_input) {
       distinct(level, mediator) %>%
       mutate(
         outcome = NA,
-        est_ci_without_controls = "",
-        p_fmt_without_controls  = "",
-        est_ci_with_controls    = "",
-        p_fmt_with_controls     = "",
+        est_ci = "",
+        p_fmt = "",
+        sig = FALSE,
         row_type = "mediator"
       )
     
@@ -226,40 +198,25 @@ make_h4_table <- function(df_input) {
     
     # mediator rows: make stats blank (not "NA")
     mutate(
-      est_ci_without_controls = ifelse(row_type == "mediator", "", est_ci_without_controls),
-      p_fmt_without_controls  = ifelse(row_type == "mediator", "", p_fmt_without_controls),
-      est_ci_with_controls    = ifelse(row_type == "mediator", "", est_ci_with_controls),
-      p_fmt_with_controls     = ifelse(row_type == "mediator", "", p_fmt_with_controls)
+      est_ci = ifelse(row_type == "mediator", "", est_ci),
+      p_fmt = ifelse(row_type == "mediator", "", p_fmt),
+      sig = ifelse(row_type == "mediator", FALSE, sig)
     ) %>%
     
     dplyr::select(
-      level, mediator, outcome, row_type, stub,
-      est_ci_without_controls, p_fmt_without_controls,
-      est_ci_with_controls,     p_fmt_with_controls
+      level, mediator, outcome, row_type, stub, est_ci, p_fmt, sig
     ) %>%
     
     # ----- build gt table -----
   gt(rowname_col = "stub", groupname_col = "level") %>%
     
     # hide helper columns – still usable in `rows =` conditions
-    cols_hide(c(mediator, outcome, row_type)) %>%
+    cols_hide(c(mediator, outcome, row_type, sig)) %>%
     
     # column labels
     cols_label(
-      est_ci_without_controls = "ACME [95% CI]",
-      p_fmt_without_controls  = "Prop. mediated",
-      est_ci_with_controls    = "ACME [95% CI]",
-      p_fmt_with_controls     = "Prop. mediated"
-    ) %>%
-    
-    # spanners
-    tab_spanner(
-      label   = "Without Covariates",
-      columns = c(est_ci_without_controls, p_fmt_without_controls)
-    ) %>%
-    tab_spanner(
-      label   = "With Covariates",
-      columns = c(est_ci_with_controls, p_fmt_with_controls)
+      est_ci = "ACME [95% CI]",
+      p_fmt = "Prop. mediated"
     ) %>%
     
     # stub left, numbers center
@@ -267,6 +224,10 @@ make_h4_table <- function(df_input) {
     tab_style(
       style = cell_text(align = "left"),
       locations = cells_stub()
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
     ) %>%
     
     # bold level row-group labels

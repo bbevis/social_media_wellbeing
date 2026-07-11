@@ -151,7 +151,8 @@ sm <- sm %>%
     
     # final formatted columns
     EstCI = paste0(est_fmt, " [", lower_fmt, ", ", upper_fmt, "]"),
-    p_val = paste0(p_fmt)
+    p_val = paste0(p_fmt),
+    sig = p_value <= 0.05
   )
 
 outcome_order <- c(
@@ -169,10 +170,10 @@ outcome_order <- c(
 # Convert to wide format with Estimate + p per lag
 
 sm_wide <- sm %>%
-  select(dv, lag_num, EstCI, p_val) %>%
+  select(dv, lag_num, EstCI, p_val, sig) %>%
   pivot_wider(
     names_from = lag_num,
-    values_from = c(EstCI, p_val),
+    values_from = c(EstCI, p_val, sig),
     names_glue = "{.value}_Lag{lag_num}"
   ) %>%
   mutate(dv = dv_labels[dv]) %>%   # Apply readable DV names
@@ -180,7 +181,8 @@ sm_wide <- sm %>%
     dv,
     EstCI_Lag1, p_val_Lag1,
     EstCI_Lag2, p_val_Lag2,
-    EstCI_Lag3, p_val_Lag3
+    EstCI_Lag3, p_val_Lag3,
+    sig_Lag1, sig_Lag2, sig_Lag3
   ) %>%
   # Apply ordering you requested
   mutate(dv = factor(dv, levels = outcome_order)) %>%
@@ -189,6 +191,7 @@ sm_wide <- sm %>%
 
 gt_table <- sm_wide %>%
   gt(rowname_col = "dv") %>%
+  cols_hide(c(sig_Lag1, sig_Lag2, sig_Lag3)) %>%
   cols_label(
     EstCI_Lag1 = "Estimate [95% CI]",
     p_val_Lag1 = md("*p*"),
@@ -211,6 +214,18 @@ gt_table <- sm_wide %>%
   cols_align(
     align = "left",
     columns = dv
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(EstCI_Lag1, p_val_Lag1), rows = sig_Lag1)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(EstCI_Lag2, p_val_Lag2), rows = sig_Lag2)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(EstCI_Lag3, p_val_Lag3), rows = sig_Lag3)
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),

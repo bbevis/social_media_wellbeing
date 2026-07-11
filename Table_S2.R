@@ -14,65 +14,39 @@ library(webshot2)
 #############################################
 # Load data
 
-monthly_nc = read.csv('monthly_results_nocontrols.csv')
-weekly_nc = read.csv('weekly_results_nocontrols.csv')
-momentary_nc = read.csv('momentary_results_nocontrols.csv')
-
 monthly_wc = read.csv('monthly_results_withcontrols.csv')
 weekly_wc = read.csv('weekly_results_withcontrols.csv')
 momentary_wc = read.csv('momentary_results_withcontrols.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity")
+                "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
 
 #############################################
 # H2 table: combine and summarise
 
-h2_df = monthly_nc %>%
+h2_df = monthly_wc %>%
   filter(outcome == 'awb_t2') %>%
   dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-  mutate(level = 'Monthly',
-         controls = FALSE) %>%
+  mutate(level = 'Monthly') %>%
   bind_rows(
-    weekly_nc %>%
+    weekly_wc %>%
       filter(outcome == 'awb_week') %>%
       dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Weekly',
-             controls = FALSE)) %>%
+      mutate(level = 'Weekly')) %>%
   bind_rows(
-    momentary_nc %>%
+    momentary_wc %>%
       filter(outcome == 'awb_momentary') %>%
       dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Momentary',
-             controls = FALSE)) %>%
-  bind_rows(
-    monthly_wc %>%
-      filter(outcome == 'awb_t2') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Monthly',
-             controls = TRUE)) %>%
-      bind_rows(
-        weekly_wc %>%
-          filter(outcome == 'awb_week') %>%
-          dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-          mutate(level = 'Weekly',
-                 controls = TRUE)) %>%
-      bind_rows(
-        momentary_wc %>%
-          filter(outcome == 'awb_momentary') %>%
-          dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-          mutate(level = 'Momentary',
-                 controls =TRUE)) %>%
+      mutate(level = 'Momentary')) %>%
   filter(mediator %in% c(platforms, activities, minutes)) %>%
-  group_by(mediator, level, controls) %>%
+  group_by(mediator, level) %>%
   summarise(
     m   = mean(path_a),
     lwr = mean(path_a_CI_lower, na.rm = TRUE),
     upr = mean(path_a_CI_upper, na.rm = TRUE),
     p   = mean(path_a_p),
-    controls = controls,
     .groups = "drop"
   ) %>%
   mutate(
@@ -97,7 +71,7 @@ h2_df = monthly_nc %>%
 mediator_order <- c(
   "Social Media",
   "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Information",
+  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
   "Other", "Productivity", "Shopping", "Social", "Utilities",
   "Social Media",
   "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
@@ -107,7 +81,7 @@ mediator_order <- unique(mediator_order)
 h2_df <- h2_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
   filter(!mediator%in%c("All Apps",
-                        "Creativity", "Education", "Entertainment", "Games", "Information",
+                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
                         "Other", "Productivity", "Shopping", "Social", "Utilities"))
 
 #############################################
@@ -118,16 +92,11 @@ h2_for_gt <- h2_df %>%
     level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
     p_fmt  = sprintf("%.3f", p), # Format p value
+    sig = p <= 0.05,
     est_ci = gsub("0\\.", ".", est_ci),
-    p_fmt  = gsub("0\\.", ".", p_fmt),
-    controls_label = ifelse(controls, "with_controls", "without_controls")
+    p_fmt  = gsub("0\\.", ".", p_fmt)
   ) %>%
-  dplyr::select(mediator_raw, mediator, level, controls_label, est_ci, p_fmt) %>%
-  pivot_wider(
-    names_from  = controls_label,
-    values_from = c(est_ci, p_fmt),
-    names_sep   = "_"
-  ) %>%
+  dplyr::select(mediator_raw, mediator, level, est_ci, p_fmt, sig) %>%
   arrange(level, mediator)
 
 #############################################
@@ -135,20 +104,10 @@ h2_for_gt <- h2_df %>%
 
 h2_gt <- h2_for_gt %>%
   gt(rowname_col = "mediator", groupname_col = "level") %>%
-  cols_hide(mediator_raw) %>%
+  cols_hide(c(mediator_raw, sig)) %>%
   cols_label(
-    est_ci_without_controls    = "Estimate [95% CI]",
-    p_fmt_without_controls     = md("*p*"),
-    est_ci_with_controls = "Estimate [95% CI]",
-    p_fmt_with_controls  = md("*p*"),
-  ) %>%
-  tab_spanner(
-    label   = "Without Covariates",
-    columns = c(est_ci_without_controls, p_fmt_without_controls)
-  ) %>%
-  tab_spanner(
-    label   = "With Covariates",
-    columns = c(est_ci_with_controls, p_fmt_with_controls)
+    est_ci = "Estimate [95% CI]",
+    p_fmt  = md("*p*")
   ) %>%
   cols_align(
     align = "center"
@@ -164,7 +123,7 @@ h2_gt <- h2_for_gt %>%
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_column_spanners(spanners = c("Without Covariates", "With Covariates"))
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),

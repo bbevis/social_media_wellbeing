@@ -16,15 +16,18 @@ source("Desc_stats_mediators.R")
 source("Desc_stats_outcomes.R")
 
 # Mediation Analyses
+# For batch runs with automatic output filenames, use master_analysis.R.
+# The individual analysis scripts can still be run manually one at a time.
+# source("master_analysis.R") ## WARNING. Batch runtime can last for hours. Check master_analysis.R before running.
 source("Monthly_analysis.R")
 source("Weekly_analysis.R")
-source("Momentary_analysis.R") ## WARNING. RUNTIME LASTS FOR HOURS!! ##
+source("Momentary_analysis.R") ## WARNING. RUNTIME LASTS FOR HOURS/DAYS!! ##
 
 
 # Plots
 source("fig_PO_wellbeing_effects.R") # H1 path c
 source("fig_PO_mediators.R") # H2 path a
-source("fig_b_path.R") # H3 path b
+source("fig_b_path_by_outcome_facets.R") # H3 path b
 source("fig_ACME.R") # H4
 source("fig_usage_effects.R") # H4
 source("fig_ANES_social_media_distribution.R") # Frequency by age by platform

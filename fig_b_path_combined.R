@@ -11,9 +11,9 @@ library(ggh4x)
 library(stringr)
 library(wesanderson)
 
-monthly_res <- read.csv("monthly_results_nocontrols.csv")
-weekly_res <- read.csv("weekly_results_nocontrols.csv")
-momentary_res <- read.csv("momentary_results_nocontrols.csv")
+monthly_res <- read.csv("monthly_results_withcontrols.csv")
+weekly_res <- read.csv("weekly_results_withcontrols.csv")
+momentary_res <- read.csv("momentary_results_withcontrols.csv")
 
 platforms <- c(
   "facebook", "twitter", "tiktok", "instagram",
@@ -22,7 +22,7 @@ platforms <- c(
 
 activities <- c(
   "information", "social", "productivity", "education", "entertainment",
-  "creativity", "games", "shopping", "utilities", "other", "total_activity"
+  "creativity", "games", "shopping", "utilities", "other", "health", "total_activity"
 )
 
 minutes <- c("sm_minutes")
@@ -55,6 +55,7 @@ activity_order <- c(
   "Education",
   "Entertainment",
   "Games",
+  "Health",
   "Information",
   "Other",
   "Productivity",
@@ -79,6 +80,7 @@ activity_labels <- c(
   "Entertainment",
   "Creativity",
   "Games",
+  "Health",
   "Other",
   "Overall Screentime"
 )

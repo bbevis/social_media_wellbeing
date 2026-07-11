@@ -54,6 +54,7 @@ h4_df <- weekly_nc_60 %>%
     .groups = "drop"
   ) %>%
   mutate(
+    sig = !(lwr < 0 & upr > 0) & is.finite(lwr) & is.finite(upr),
     mediator_raw = mediator,
     mediator = case_when(
       mediator == "total_platform" ~ "Social Media",
@@ -86,10 +87,10 @@ h4_for_gt <- h4_df %>%
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr),
     p_fmt = sprintf("%.2f%%", p * 100)
   ) %>%
-  dplyr::select(mediator_raw, mediator, outcome, est_ci, p_fmt) %>%
+  dplyr::select(mediator_raw, mediator, outcome, est_ci, p_fmt, sig) %>%
   mutate(
     across(
-      everything(),
+      where(is.character),
       ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE)
     )
   ) %>%
@@ -134,6 +135,7 @@ make_h4_table <- function(df_input) {
           outcome = NA,
           est_ci = "",
           p_fmt = "",
+          sig = FALSE,
           row_type = "mediator"
         )
 
@@ -150,11 +152,12 @@ make_h4_table <- function(df_input) {
         as.character(outcome)
       ),
       est_ci = ifelse(row_type == "mediator", "", est_ci),
-      p_fmt = ifelse(row_type == "mediator", "", p_fmt)
+      p_fmt = ifelse(row_type == "mediator", "", p_fmt),
+      sig = ifelse(row_type == "mediator", FALSE, sig)
     ) %>%
-    dplyr::select(mediator, outcome, row_type, stub, est_ci, p_fmt) %>%
+    dplyr::select(mediator, outcome, row_type, stub, est_ci, p_fmt, sig) %>%
     gt(rowname_col = "stub") %>%
-    cols_hide(c(mediator, outcome, row_type)) %>%
+    cols_hide(c(mediator, outcome, row_type, sig)) %>%
     cols_label(
       est_ci = "ACME [95% CI]",
       p_fmt = "Prop. mediated"
@@ -164,6 +167,10 @@ make_h4_table <- function(df_input) {
       columns = c(est_ci, p_fmt)
     ) %>%
     cols_align("center") %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
+    ) %>%
     tab_style(
       style = cell_text(align = "left"),
       locations = cells_stub()

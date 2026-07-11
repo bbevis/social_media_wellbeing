@@ -6,12 +6,12 @@ library(ggstance)
 # install.packages("ggh4x")
 library(ggh4x)
 
-monthly_res = read.csv('monthly_results_nocontrols.csv')
-weekly_res = read.csv('weekly_results_nocontrols.csv')
-momentary_res = read.csv('momentary_results_nocontrols.csv')
+monthly_res = read.csv('monthly_results_withcontrols.csv')
+weekly_res = read.csv('weekly_results_withcontrols.csv')
+momentary_res = read.csv('momentary_results_withcontrols.csv')
 
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity", "sm_minutes")
+                "creativity","games","shopping","utilities","other","health", "total_activity", "sm_minutes")
 
 # bind monthly/weekly/momentary, recode labels, summarize,
 # add significance + level×sign color factor, title-case mediator
@@ -128,6 +128,7 @@ activity_colors <- c(
   "Entertainment"  = "#ff7f00",  # orange
   "Creativity"     = "#b15928",  # brown
   "Games"          = "#a6cee3",  # light blue
+  "Health"         = "#cc6677",  # rose
   "Shopping"       = "#fb9a99",  # light red/pink
   "Utilities"      = "#b2df8a",  # light green
   "Other"          = "#cab2d6",  # light lavender

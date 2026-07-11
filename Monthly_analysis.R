@@ -20,12 +20,12 @@ library(boot)
 ##############################################
 # Analysis parameters
 
-analysis_iv <- "political_orientation" # political_orientation, authoritarianism, party_affiliation_t1, presidential_support
-include_controls <- FALSE
-include_Ypre <- FALSE # preregistered monthly model controls for baseline wellbeing
-control_vars <- c("gender", "ethnicity", "ses")
-n_sims <- 1000
-ci_level <- 0.95
+analysis_iv <- getOption("coco.analysis_iv", getOption("appusage.analysis_iv", if (exists("analysis_iv", inherits = FALSE)) analysis_iv else "political_orientation")) # political_orientation, authoritarianism, party_affiliation_t1, presidential_support
+include_controls <- getOption("coco.include_controls", getOption("appusage.include_controls", if (exists("include_controls", inherits = FALSE)) include_controls else FALSE))
+include_Ypre <- getOption("coco.include_Ypre", getOption("appusage.include_Ypre", if (exists("include_Ypre", inherits = FALSE)) include_Ypre else FALSE)) # preregistered monthly model controls for baseline wellbeing
+control_vars <- getOption("coco.control_vars", getOption("appusage.control_vars", if (exists("control_vars", inherits = FALSE)) control_vars else c("gender", "ethnicity", "ses")))
+n_sims <- getOption("coco.n_sims", getOption("appusage.n_sims", if (exists("n_sims", inherits = FALSE)) n_sims else 1000))
+ci_level <- getOption("coco.ci_level", getOption("appusage.ci_level", if (exists("ci_level", inherits = FALSE)) ci_level else 0.95))
 
 # Output filename guide:
 # Primary IV = political_orientation
@@ -45,7 +45,7 @@ ci_level <- 0.95
 # Test runs:
 #   Use a temporary filename, e.g. "monthly_results_withcontrols_test20.csv"
 
-save_file_name <- "monthly_results_nocontrols.csv"
+save_file_name <- getOption("coco.save_file_name", getOption("appusage.save_file_name", if (exists("save_file_name", inherits = FALSE)) save_file_name else "monthly_results_nocontrols.csv"))
 
 ##############################################
 
@@ -58,7 +58,7 @@ outcomes <- c("swls_t2", "uls_t2", "awb_t2")
 outcomes_pre <- c("swls_t1", "uls_t1", "awb_t1")
 mediators <- c("facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat",
                "information", "social", "productivity", "education", "entertainment", 
-               "creativity", "games", "shopping", "utilities", "other", "total_platform", "total_activity")
+               "creativity", "games", "shopping", "utilities", "other", "health", "total_platform", "total_activity")
 
 IV <- analysis_iv
 

@@ -72,10 +72,11 @@ h1_for_gt <- h1_df %>%
     level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
     p_fmt  = sprintf("%.3f", p), # Format p value
+    sig = p <= 0.05,
     est_ci = gsub("0\\.", ".", est_ci),
     p_fmt  = gsub("0\\.", ".", p_fmt)
   ) %>%
-  dplyr::select(outcome, level, est_ci, p_fmt) %>%
+  dplyr::select(outcome, level, est_ci, p_fmt, sig) %>%
   arrange(outcome, level)
 
 #############################################
@@ -83,6 +84,7 @@ h1_for_gt <- h1_df %>%
 
 h1_gt <- h1_for_gt %>%
   gt(rowname_col = "outcome", groupname_col = "level") %>%
+  cols_hide(sig) %>%
   cols_label(
     est_ci    = "Estimate [95% CI]",
     p_fmt     = md("*p*"),
@@ -90,6 +92,10 @@ h1_gt <- h1_for_gt %>%
   cols_align(
     align = "center"
   )%>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
+  ) %>%
   tab_style(
     style = cell_text(align = "left"),
     locations = cells_stub()

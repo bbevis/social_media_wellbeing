@@ -14,10 +14,6 @@ library(webshot2)
 #############################################
 # Load data
 
-monthly_nc = read.csv('monthly_results_nocontrols.csv')
-weekly_nc = read.csv('weekly_results_nocontrols.csv')
-momentary_nc = read.csv('momentary_results_nocontrols.csv')
-
 monthly_wc = read.csv('monthly_results_withcontrols.csv')
 weekly_wc = read.csv('weekly_results_withcontrols.csv')
 momentary_wc = read.csv('momentary_results_withcontrols.csv')
@@ -26,46 +22,25 @@ momentary_wc = read.csv('momentary_results_withcontrols.csv')
 #############################################
 # H1 table: combine and summarise
 
-h1_df = monthly_nc %>%
+h1_df = monthly_wc %>%
   filter(mediator%in%c('total_activity')) %>%
   dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-  mutate(level = 'Monthly',
-         controls = FALSE) %>%
+  mutate(level = 'Monthly') %>%
   bind_rows(
-    weekly_nc %>%
+    weekly_wc %>%
       filter(mediator%in%c('total_activity')) %>%
       dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-      mutate(level = 'Weekly',
-             controls = FALSE)) %>%
+      mutate(level = 'Weekly')) %>%
   bind_rows(
-    momentary_nc %>%
+    momentary_wc %>%
       dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-      mutate(level = 'Momentary',
-             controls = FALSE)) %>%
-  bind_rows(
-    monthly_wc %>%
-      filter(mediator%in%c('total_activity')) %>%
-      dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-      mutate(level = 'Monthly',
-             controls = TRUE)) %>%
-      bind_rows(
-        weekly_wc %>%
-          filter(mediator%in%c('total_activity')) %>%
-          dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-          mutate(level = 'Weekly',
-                 controls = TRUE)) %>%
-      bind_rows(
-        momentary_wc %>%
-          dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-          mutate(level = 'Momentary',
-                 controls =TRUE)) %>%
-  group_by(outcome,level, controls) %>%
+      mutate(level = 'Momentary')) %>%
+  group_by(outcome,level) %>%
   summarise(
     m   = mean(path_c),
     lwr = mean(path_c_CI_lower, na.rm = TRUE),
     upr = mean(path_c_CI_upper, na.rm = TRUE),
     p   = mean(path_c_p),
-    controls = controls,
     .groups = "drop"
   ) %>%
   mutate(outcome = dplyr::recode(outcome,
@@ -98,16 +73,11 @@ h1_for_gt <- h1_df %>%
     level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
     p_fmt  = sprintf("%.3f", p), # Format p value
+    sig = p <= 0.05,
     est_ci = gsub("0\\.", ".", est_ci),
-    p_fmt  = gsub("0\\.", ".", p_fmt),
-    controls_label = ifelse(controls, "with_controls", "without_controls")
+    p_fmt  = gsub("0\\.", ".", p_fmt)
   ) %>%
-  dplyr::select(outcome, level, controls_label, est_ci, p_fmt) %>%
-  pivot_wider(
-    names_from  = controls_label,
-    values_from = c(est_ci, p_fmt),
-    names_sep   = "_"
-  ) %>%
+  dplyr::select(outcome, level, est_ci, p_fmt, sig) %>%
   arrange(outcome, level)
 
 #############################################
@@ -115,19 +85,10 @@ h1_for_gt <- h1_df %>%
 
 h1_gt <- h1_for_gt %>%
   gt(rowname_col = "outcome", groupname_col = "level") %>%
+  cols_hide(sig) %>%
   cols_label(
-    est_ci_without_controls    = "Estimate [95% CI]",
-    p_fmt_without_controls     = md("*p*"),
-    est_ci_with_controls = "Estimate [95% CI]",
-    p_fmt_with_controls  = md("*p*"),
-  ) %>%
-  tab_spanner(
-    label   = "Without Covariates",
-    columns = c(est_ci_without_controls, p_fmt_without_controls)
-  ) %>%
-  tab_spanner(
-    label   = "With Covariates",
-    columns = c(est_ci_with_controls, p_fmt_with_controls)
+    est_ci = "Estimate [95% CI]",
+    p_fmt  = md("*p*")
   ) %>%
   cols_align(
     align = "center"
@@ -143,7 +104,7 @@ h1_gt <- h1_for_gt %>%
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_column_spanners(spanners = c("Without Covariates", "With Covariates"))
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
   ) %>%
   tab_options(
     table.font.names          = "Helvetica, Arial, sans-serif",

@@ -21,7 +21,7 @@ momentary_nc = read.csv('momentary_results_nocontrols_presidential_support.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other", "total_activity")
+                "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
 
 #############################################
@@ -72,7 +72,7 @@ h2_df = monthly_nc %>%
 mediator_order <- c(
   "Social Media",
   "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Information",
+  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
   "Other", "Productivity", "Shopping", "Social", "Utilities",
   "Social Media",
   "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
@@ -82,7 +82,7 @@ mediator_order <- unique(mediator_order)
 h2_df <- h2_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
   filter(!mediator%in%c("All Apps",
-                        "Creativity", "Education", "Entertainment", "Games", "Information",
+                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
                         "Other", "Productivity", "Shopping", "Social", "Utilities"))
 
 #############################################
@@ -93,10 +93,11 @@ h2_for_gt <- h2_df %>%
     level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
     p_fmt  = sprintf("%.3f", p), # Format p value
+    sig = p <= 0.05,
     est_ci = gsub("0\\.", ".", est_ci),
     p_fmt  = gsub("0\\.", ".", p_fmt)
   ) %>%
-  dplyr::select(mediator_raw, mediator, level, est_ci, p_fmt) %>%
+  dplyr::select(mediator_raw, mediator, level, est_ci, p_fmt, sig) %>%
   arrange(level, mediator)
 
 #############################################
@@ -104,7 +105,7 @@ h2_for_gt <- h2_df %>%
 
 h2_gt <- h2_for_gt %>%
   gt(rowname_col = "mediator", groupname_col = "level") %>%
-  cols_hide(mediator_raw) %>%
+  cols_hide(c(mediator_raw, sig)) %>%
   cols_label(
     est_ci    = "Estimate [95% CI]",
     p_fmt     = md("*p*"),
@@ -112,6 +113,10 @@ h2_gt <- h2_for_gt %>%
   cols_align(
     align = "center"
   )%>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
+  ) %>%
   tab_style(
     style = cell_text(align = "left"),
     locations = cells_stub()

@@ -21,12 +21,14 @@ NO_APP_STRATEGY <- "NA"   # primary analysis; use "ZERO" for the no-app-as-zero 
 # Load data
 
 appusage_1 <- read.csv("data/coco_ut1_appusage_survey.csv", header = TRUE, sep = ";")
+appusage_health_1 <- read.csv("data/coco_ut1_appusage_survey_health.csv", header = TRUE)
 ema_1      <- read.csv("data/coco_ut1_ema_survey.csv", header = TRUE, sep = ";")
 post_1     <- read.csv("data/coco_ut1_postsurvey.csv", header = TRUE, sep = ";")
 pre_1      <- read.csv("data/coco_ut1_presurvey.csv", header = TRUE, sep = ";")
 daily_1    <- read.csv("data/coco_ut1_daily_survey.csv", header = TRUE, sep = ";")
 
 appusage_2 <- read.csv("data/coco_ut2_appusage_survey.csv", header = TRUE, sep = ";")
+appusage_health_2 <- read.csv("data/coco_ut2_appusage_survey_health.csv", header = TRUE)
 ema_2      <- read.csv("data/coco_ut2_ema_survey.csv", header = TRUE, sep = ";")
 post_2     <- read.csv("data/coco_ut2_postsurvey.csv", header = TRUE, sep = ";")
 pre_2      <- read.csv("data/coco_ut2_presurvey.csv", header = TRUE, sep = ";")
@@ -35,16 +37,21 @@ daily_2    <- read.csv("data/coco_ut2_daily_survey.csv", header = TRUE, sep = ";
 demo_fall   <- read.csv("data/demographics_fall_anonymized.csv", header = TRUE)
 demo_spring <- read.csv("data/demographics_spring_anonymized.csv", header = TRUE)
 
+appusage_1 <- appusage_1 %>%
+  left_join(appusage_health_1, by = "id")
+
+appusage_2 <- appusage_2 %>%
+  left_join(appusage_health_2, by = "id")
 
 mediators <- c(
   "facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat",
   "information", "social", "productivity", "education", "entertainment",
-  "creativity", "games", "shopping", "utilities", "other",
+  "creativity", "games", "shopping", "utilities", "other", "health",
   "total_platform", "total_activity")
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other")
+                "creativity","games","shopping","utilities","other","health")
 
 write.csv(appusage_1, "appusage_raw.csv", row.names = FALSE)
 

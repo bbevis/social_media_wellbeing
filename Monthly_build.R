@@ -21,20 +21,27 @@ library(pwr)
 
 # Read data
 appusage_1 <- read.csv("data/coco_ut1_appusage_survey.csv", header = TRUE, sep = ";")
+appusage_health_1 <- read.csv("data/coco_ut1_appusage_survey_health.csv", header = TRUE)
 # ema_1 <- read.csv("data/coco_ut1_ema_survey.csv", header = TRUE, sep = ";")
 post_1 <- read.csv("data/coco_ut1_postsurvey.csv", header = TRUE, sep = ";")
 pre_1 <- read.csv("data/coco_ut1_presurvey.csv", header = TRUE, sep = ";")
 appusage_2 <- read.csv("data/coco_ut2_appusage_survey.csv", header = TRUE, sep = ";")
+appusage_health_2 <- read.csv("data/coco_ut2_appusage_survey_health.csv", header = TRUE)
 # ema_2 <- read.csv("data/coco_ut2_ema_survey.csv", header = TRUE, sep = ";")
 post_2 <- read.csv("data/coco_ut2_postsurvey.csv", header = TRUE, sep = ";")
 pre_2 <- read.csv("data/coco_ut2_presurvey.csv", header = TRUE, sep = ";")
 demo_fall <- read.csv("data/demographics_fall_anonymized.csv", header = TRUE)
 demo_spring <- read.csv("data/demographics_spring_anonymized.csv", header = TRUE)
 
+appusage_1 <- appusage_1 %>%
+  left_join(appusage_health_1, by = "id")
+
+appusage_2 <- appusage_2 %>%
+  left_join(appusage_health_2, by = "id")
 
 platforms <- c("facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat") # Platforms
 activities <- c("information", "social", "productivity", "education", "entertainment", 
-                "creativity", "games", "shopping", "utilities", "other") # Activity categories
+                "creativity", "games", "shopping", "utilities", "other", "health") # Activity categories
 NO_APP_STRATEGY <- "NA"   # primary analysis; use "ZERO" for the no-app-as-zero robustness variant
 
 ###############################
@@ -365,14 +372,21 @@ monthly_df = monthly_df %>%
 monthly_df <- monthly_df %>%
   mutate(across(everything(), ~ ifelse(is.nan(.), NA, .)))
 
-rm(appusage_1, appusage_2, demo_fall, demo_spring, pre_1, pre_2, post_1, post_2,
-   activity_df, platform_df)
+rm(list = intersect(
+  c("appusage_1", "appusage_2", "appusage_health_1", "appusage_health_2",
+    "demo_fall", "demo_spring", "pre_1", "pre_2", "post_1", "post_2",
+    "activity_df", "platform_df"),
+  ls()
+))
 
 write.csv(monthly_df, "monthly.csv", row.names = FALSE)
 
 
-rm(appusage, appusage_monthly,
-   attrition_results, awb_alpha,
-   cor_df, cor_mat, demo,
-   exclusion_summary, post, pre,
-   swls_alpha, uls_alpha)
+rm(list = intersect(
+  c("appusage", "appusage_monthly",
+    "attrition_results", "awb_alpha",
+    "cor_df", "cor_mat", "demo",
+    "exclusion_summary", "post", "pre",
+    "swls_alpha", "uls_alpha"),
+  ls()
+))

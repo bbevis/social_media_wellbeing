@@ -37,12 +37,12 @@ library(WebPower)
 ##############################################
 # Analysis parameters
 
-analysis_iv <- "presidential_support" # political_orientation, authoritarianism, party_affiliation_t1, presidential_support
-include_controls <- FALSE
-control_vars <- c("gender", "ethnicity", "ses")
-n_sims <- 1000
-ci_level <- 0.95
-ema_exclude_col <- "ema_50_exclude" # primary = ema_50_exclude; robustness = ema_40_exclude or ema_60_exclude
+analysis_iv <- getOption("coco.analysis_iv", getOption("appusage.analysis_iv", if (exists("analysis_iv", inherits = FALSE)) analysis_iv else "political_orientation")) # political_orientation, authoritarianism, party_affiliation_t1, presidential_support
+include_controls <- getOption("coco.include_controls", getOption("appusage.include_controls", if (exists("include_controls", inherits = FALSE)) include_controls else TRUE))
+control_vars <- getOption("coco.control_vars", getOption("appusage.control_vars", if (exists("control_vars", inherits = FALSE)) control_vars else c("gender", "ethnicity", "ses")))
+n_sims <- getOption("coco.n_sims", getOption("appusage.n_sims", if (exists("n_sims", inherits = FALSE)) n_sims else 1000))
+ci_level <- getOption("coco.ci_level", getOption("appusage.ci_level", if (exists("ci_level", inherits = FALSE)) ci_level else 0.95))
+ema_exclude_col <- getOption("coco.ema_exclude_col", getOption("appusage.ema_exclude_col", if (exists("ema_exclude_col", inherits = FALSE)) ema_exclude_col else "ema_50_exclude")) # primary = ema_50_exclude; robustness = ema_40_exclude or ema_60_exclude
 
 # Output filename guide:
 # Primary IV = political_orientation
@@ -63,8 +63,8 @@ ema_exclude_col <- "ema_50_exclude" # primary = ema_50_exclude; robustness = ema
 #   analysis_iv = "presidential_support":
 #     "weekly_results_nocontrols_presidential_support.csv"
 
-save_file_name <- "weekly_results_nocontrols_presidential_support.csv"
-diagnostic_progress <- FALSE
+save_file_name <- getOption("coco.save_file_name", getOption("appusage.save_file_name", if (exists("save_file_name", inherits = FALSE)) save_file_name else "weekly_results_nocontrols_presidential_support.csv"))
+diagnostic_progress <- getOption("coco.diagnostic_progress", getOption("appusage.diagnostic_progress", if (exists("diagnostic_progress", inherits = FALSE)) diagnostic_progress else FALSE))
 
 ##############################################
 # Load data
@@ -80,13 +80,13 @@ dv_vars <- c("awb_week", "angry_rev", "worried_rev", "happy", "sad_rev", "stress
 mediators <- c(
   "facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat",
   "information", "social", "productivity", "education", "entertainment",
-  "creativity", "games", "shopping", "utilities", "other",
+  "creativity", "games", "shopping", "utilities", "other", "health",
   "total_platform", "total_activity"
 )
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat")
 activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other")
+                "creativity","games","shopping","utilities","other","health")
 
 IV <- analysis_iv
 

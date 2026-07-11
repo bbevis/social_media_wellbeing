@@ -87,16 +87,25 @@ tbl_outcomes <- gt::gt(outcomes_all, groupname_col = "Level") %>%
                 locations = gt::cells_row_groups()) %>%
   gt::tab_style(gt::cell_text(size = gt::px(22), weight = "bold"),
                 locations = gt::cells_title("title")) %>%
-  gt::cols_label(
-    Variable = "Variable",
-    `N participants` = gt::md("**N Participants**"),
-    `N observations` = gt::md("**N Observations**"),
-    Mean = gt::md("**Mean**"),
-    SD   = gt::md("**SD**"),
-    Min  = gt::md("**Min**"),
-    Max  = gt::md("**Max**")
-  ) %>%
-  gt::fmt_number(columns = tidyselect::all_of(c("Mean","SD","Min","Max")), decimals = 2) %>%
+	  gt::cols_label(
+	    Variable = "Variable",
+	    `N participants` = gt::md("**N Participants**"),
+	    `N observations` = gt::md("**N Observations**"),
+	    Mean = gt::md("**Mean**"),
+	    SD   = gt::md("**SD**"),
+	    Min  = gt::md("**Min**"),
+	    Max  = gt::md("**Max**")
+	  ) %>%
+	  gt::cols_width(
+	    Variable ~ gt::px(330),
+	    `N participants` ~ gt::px(150),
+	    `N observations` ~ gt::px(150),
+	    Mean ~ gt::px(100),
+	    SD ~ gt::px(100),
+	    Min ~ gt::px(100),
+	    Max ~ gt::px(100)
+	  ) %>%
+	  gt::fmt_number(columns = tidyselect::all_of(c("Mean","SD","Min","Max")), decimals = 2) %>%
   gt::fmt_number(columns = tidyselect::all_of(c("N participants","N observations")),
                  decimals = 0, use_seps = TRUE) %>%
   

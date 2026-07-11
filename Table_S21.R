@@ -137,9 +137,10 @@ table_df <- data.frame(
       TRUE ~ "symptom_item"
     ),
     est_ci = format_est_ci(est, low, high),
-    p_fmt = format_p(p)
+    p_fmt = format_p(p),
+    sig = p <= 0.05
   ) %>%
-  dplyr::select(outcome, row_type, est_ci, p_fmt) %>%
+  dplyr::select(outcome, row_type, est_ci, p_fmt, sig) %>%
   arrange(outcome)
 
 #############################################
@@ -147,12 +148,16 @@ table_df <- data.frame(
 
 table_s21 <- table_df %>%
   gt(rowname_col = "outcome") %>%
-  cols_hide(row_type) %>%
+  cols_hide(c(row_type, sig)) %>%
   cols_label(
     est_ci = "Estimate [95% CI]",
     p_fmt = md("*p*")
   ) %>%
   cols_align("center") %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
+  ) %>%
   tab_style(
     style = cell_text(align = "left", indent = px(20)),
     locations = cells_stub()

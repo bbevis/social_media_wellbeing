@@ -9,9 +9,9 @@ library(ggplot2)
 library(ggstance)
 library(stringr)
 
-monthly_res <- read.csv("monthly_results_nocontrols.csv")
-weekly_res <- read.csv("weekly_results_nocontrols.csv")
-momentary_res <- read.csv("momentary_results_nocontrols.csv")
+monthly_res <- read.csv("monthly_results_withcontrols.csv")
+weekly_res <- read.csv("weekly_results_withcontrols.csv")
+momentary_res <- read.csv("momentary_results_withcontrols.csv")
 
 platforms <- c(
   "facebook", "twitter", "tiktok", "instagram",
@@ -20,7 +20,7 @@ platforms <- c(
 
 activities <- c(
   "information", "social", "productivity", "education", "entertainment",
-  "creativity", "games", "shopping", "utilities", "other"
+  "creativity", "games", "shopping", "utilities", "other", "health"
 )
 
 mediators_to_plot <- c(
@@ -54,6 +54,7 @@ mediator_order <- c(
   "Education",
   "Entertainment",
   "Games",
+  "Health",
   "Information",
   "Other",
   "Productivity",

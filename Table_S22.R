@@ -83,9 +83,10 @@ table_df <- anes_res %>%
   mutate(
     mediator = factor(mediator, levels = mediator_order),
     est_ci = format_est_ci(est, low, high),
-    p_fmt = format_p(p)
+    p_fmt = format_p(p),
+    sig = p <= 0.05
   ) %>%
-  dplyr::select(mediator, est_ci, p_fmt) %>%
+  dplyr::select(mediator, est_ci, p_fmt, sig) %>%
   arrange(mediator)
 
 #############################################
@@ -93,11 +94,16 @@ table_df <- anes_res %>%
 
 table_s22 <- table_df %>%
   gt(rowname_col = "mediator") %>%
+  cols_hide(sig) %>%
   cols_label(
     est_ci = "Estimate [95% CI]",
     p_fmt = md("*p*")
   ) %>%
   cols_align("center") %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
+  ) %>%
   tab_style(
     style = cell_text(align = "left", indent = px(20)),
     locations = cells_stub()

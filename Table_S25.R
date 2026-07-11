@@ -129,12 +129,13 @@ cor_df <- anes_w3 %>%
     variable = factor(unname(var_labels[variable]), levels = unname(var_labels[cor_vars])),
     rho_fmt = format_decimal(rho, 3),
     p_fmt = format_p(p),
+    sig = p <= 0.05,
     row_type = "measure",
     row_label = as.character(variable),
     row_order = as.integer(variable)
   ) %>%
   arrange(section, variable) %>%
-  dplyr::select(section, row_type, row_label, row_order, rho_fmt, p_fmt)
+  dplyr::select(section, row_type, row_label, row_order, rho_fmt, p_fmt, sig)
 
 headers <- cor_df %>%
   distinct(section) %>%
@@ -143,7 +144,8 @@ headers <- cor_df %>%
     row_label = "\u00a0",
     row_order = 0L,
     rho_fmt = "\u00a0",
-    p_fmt = "\u00a0"
+    p_fmt = "\u00a0",
+    sig = FALSE
   )
 
 table_df <- bind_rows(headers, cor_df) %>%
@@ -155,7 +157,7 @@ table_df <- bind_rows(headers, cor_df) %>%
 
 table_s25 <- table_df %>%
   gt() %>%
-  cols_hide(c(section, row_type, row_order)) %>%
+  cols_hide(c(section, row_type, row_order, sig)) %>%
   cols_label(
     row_label = "",
     rho_fmt = "Spearman rho",
@@ -163,6 +165,10 @@ table_s25 <- table_df %>%
   ) %>%
   cols_align("center", columns = c(rho_fmt, p_fmt)) %>%
   cols_align("left", columns = row_label) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(rows = sig, columns = c(rho_fmt, p_fmt))
+  ) %>%
   tab_style(
     style = cell_text(indent = px(30)),
     locations = cells_body(rows = row_type == "measure", columns = row_label)

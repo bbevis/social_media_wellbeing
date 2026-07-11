@@ -6,9 +6,9 @@ library(ggstance)
 # install.packages("ggh4x")
 library(ggh4x)
 
-monthly_res = read.csv('monthly_results_nocontrols.csv')
-weekly_res = read.csv('weekly_results_nocontrols.csv')
-momentary_res = read.csv('momentary_results_nocontrols.csv')
+monthly_res = read.csv('monthly_results_withcontrols.csv')
+weekly_res = read.csv('weekly_results_withcontrols.csv')
+momentary_res = read.csv('momentary_results_withcontrols.csv')
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform", "sm_minutes")
 

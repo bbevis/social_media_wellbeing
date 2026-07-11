@@ -104,12 +104,13 @@ table_df <- anes_res %>%
     outcome = factor(outcome, levels = outcome_order),
     mediator = factor(mediator, levels = mediator_order),
     est_ci = format_est_ci(b_path_est, b_path_ci_low, b_path_ci_high),
-    p_fmt = format_p(b_path_p)
+    p_fmt = format_p(b_path_p),
+    sig = b_path_p <= 0.05
   ) %>%
-  dplyr::select(mediator, outcome, model, est_ci, p_fmt) %>%
+  dplyr::select(mediator, outcome, model, est_ci, p_fmt, sig) %>%
   pivot_wider(
     names_from = model,
-    values_from = c(est_ci, p_fmt),
+    values_from = c(est_ci, p_fmt, sig),
     names_sep = "_"
   ) %>%
   arrange(mediator, outcome)
@@ -125,6 +126,8 @@ headers <- table_df %>%
     p_fmt_model_1 = "",
     est_ci_model_2 = "",
     p_fmt_model_2 = "",
+    sig_model_1 = FALSE,
+    sig_model_2 = FALSE,
     row_type = "platform"
   )
 
@@ -143,7 +146,8 @@ table_for_gt <- bind_rows(headers, rows) %>%
     across(
       c(est_ci_model_1, p_fmt_model_1, est_ci_model_2, p_fmt_model_2),
       ~ ifelse(is.na(.x), "", .x)
-    )
+    ),
+    across(c(sig_model_1, sig_model_2), ~ ifelse(is.na(.x), FALSE, .x))
   ) %>%
   dplyr::select(
     mediator,
@@ -153,7 +157,9 @@ table_for_gt <- bind_rows(headers, rows) %>%
     est_ci_model_1,
     p_fmt_model_1,
     est_ci_model_2,
-    p_fmt_model_2
+    p_fmt_model_2,
+    sig_model_1,
+    sig_model_2
   )
 
 #############################################
@@ -161,7 +167,7 @@ table_for_gt <- bind_rows(headers, rows) %>%
 
 table_s23 <- table_for_gt %>%
   gt(rowname_col = "stub") %>%
-  cols_hide(c(mediator, outcome, row_type)) %>%
+  cols_hide(c(mediator, outcome, row_type, sig_model_1, sig_model_2)) %>%
   cols_label(
     est_ci_model_1 = "Estimate [95% CI]",
     p_fmt_model_1 = md("*p*"),
@@ -177,6 +183,14 @@ table_s23 <- table_for_gt %>%
     columns = c(est_ci_model_2, p_fmt_model_2)
   ) %>%
   cols_align("center") %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(est_ci_model_1, p_fmt_model_1), rows = sig_model_1)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(est_ci_model_2, p_fmt_model_2), rows = sig_model_2)
+  ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_column_spanners(spanners = c("Model 1", "Model 2"))

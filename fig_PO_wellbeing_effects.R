@@ -8,9 +8,9 @@ library(dplyr)
 library(ggplot2)
 library(ggstance)
 
-monthly_res = read.csv('monthly_results_nocontrols.csv')
-weekly_res = read.csv('weekly_results_nocontrols.csv')
-momentary_res = read.csv('momentary_results_nocontrols.csv')
+monthly_res = read.csv('monthly_results_withcontrols.csv')
+weekly_res = read.csv('weekly_results_withcontrols.csv')
+momentary_res = read.csv('momentary_results_withcontrols.csv')
 
 
 vars = c("awb_week", "awb_momentary", "angry_rev", "worried_rev", "happy", "sad_rev", "stressed_rev", "lonely_rev", "accepted", "swls_t2", "uls_t2", "awb_t2")
@@ -126,7 +126,7 @@ ggplot(
     name = "Time level"
   ) +
   scale_color_manual(values = color_palette, guide = "none") +
-  labs(x = "Liberalism                                                                            Conservatism\n \nAssociation Between Political Orientation and Wellbeing (H1)",
+  labs(x = "Liberalism                                                                    Conservatism\n \nAssociation Between Political Orientation and Wellbeing (H1)",
        y = "") +
   theme_clean +
   theme(

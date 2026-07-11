@@ -108,6 +108,8 @@ Important folders and files:
   Scripts that create analysis-ready datasets
 - `Monthly_analysis.R`, `Weekly_analysis.R`, `Momentary_analysis.R`
   Scripts that run the main statistical models
+- `master_analysis.R`
+  Optional helper for running batches of analysis scripts with automatic output filenames
 - `Demographics.R`, `Desc_stats*.R`
   Descriptive summary scripts
 - `fig_*.R`
@@ -124,11 +126,13 @@ The raw data are stored in `Data/`. The main inputs are:
 - `coco_ut1_ema_survey.csv`
 - `coco_ut1_daily_survey.csv`
 - `coco_ut1_appusage_survey.csv`
+- `coco_ut1_appusage_survey_health.csv`
 - `coco_ut2_presurvey.csv`
 - `coco_ut2_postsurvey.csv`
 - `coco_ut2_ema_survey.csv`
 - `coco_ut2_daily_survey.csv`
 - `coco_ut2_appusage_survey.csv`
+- `coco_ut2_appusage_survey_health.csv`
 - `demographics_fall_anonymized.csv`
 - `demographics_spring_anonymized.csv`
 
@@ -196,18 +200,21 @@ They also create some helper files such as:
 
 ### Step 2: Run the main analyses
 
-After the build scripts finish, run:
+After the build scripts finish, you can either run the analysis scripts manually:
 
 1. `Monthly_analysis.R`
 2. `Weekly_analysis.R`
 3. `Momentary_analysis.R`
 
-These scripts read the derived datasets and write the main statistical output files.
+or use `master_analysis.R` to run batches. It chooses output filenames from the requested time level, IV, controls setting, and weekly EMA threshold. EMA thresholds apply only to weekly models; monthly models are run once per IV/control setting.
 
 Important:
 
 - `Momentary_analysis.R` is the slowest script and may run for hours.
-- Some analysis scripts have multiple possible output file names, controlled by variables near the top of the script.
+- `Weekly_analysis.R` can also be slow because it runs many multilevel mediation models in parallel.
+- The individual analysis scripts can still be run manually one at a time.
+- `master_analysis.R` may contain an uncommented batch run; check it before sourcing.
+- Some analysis scripts have multiple possible output file names, controlled by variables near the top of the script or by `master_analysis.R`.
 
 ### Step 3: Run descriptive summaries, figures, and tables if needed
 
@@ -231,9 +238,13 @@ Use this minimal order:
 1. `Monthly_build.R`
 2. `Weekly_build.R`
 3. `Momentary_build.R`
-4. `Monthly_analysis.R`
-5. `Weekly_analysis.R`
-6. `Momentary_analysis.R`
+4. `Monthly_analysis.R`, `Weekly_analysis.R`, and/or `Momentary_analysis.R`
+
+For repeated model runs, use:
+
+4. `master_analysis.R`
+
+The current batch workflow supports running weekly and monthly models for all IVs with controls, while applying weekly EMA thresholds only to weekly models.
 
 If you only care about one time scale, you can run just the matching pair:
 

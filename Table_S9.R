@@ -145,15 +145,16 @@ results <- results %>%
     p_fmt = case_when(
       p_value < .001 ~ "< .001",
       TRUE ~ sub("^0\\.", ".", sprintf("%.3f", p_value))
-    )
+    ),
+    sig = p_value <= 0.05
   )
 
 
 wide <- results %>%
-  select(dv, lag_num, EstCI, p_fmt) %>%
+  select(dv, lag_num, EstCI, p_fmt, sig) %>%
   pivot_wider(
     names_from = lag_num,
-    values_from = c(EstCI, p_fmt),
+    values_from = c(EstCI, p_fmt, sig),
     names_glue = "{.value}_Lag{lag_num}"
   )
 
@@ -187,6 +188,7 @@ wide <- wide %>%
 
 gt_table <- wide %>%
   gt(rowname_col = "dv") %>%
+  cols_hide(c(sig_Lag1, sig_Lag2, sig_Lag3)) %>%
   
   tab_spanner(label = md("**Lag 1**"), columns = c(EstCI_Lag1, p_fmt_Lag1)) %>%
   tab_spanner(label = md("**Lag 2**"), columns = c(EstCI_Lag2, p_fmt_Lag2)) %>%
@@ -209,6 +211,18 @@ gt_table <- wide %>%
       EstCI_Lag2, p_fmt_Lag2,
       EstCI_Lag3, p_fmt_Lag3
     )
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(EstCI_Lag1, p_fmt_Lag1), rows = sig_Lag1)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(EstCI_Lag2, p_fmt_Lag2), rows = sig_Lag2)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = c(EstCI_Lag3, p_fmt_Lag3), rows = sig_Lag3)
   ) %>%
   
   tab_options(
