@@ -13,7 +13,7 @@ library(magick)
 #############################################
 # Load data
 
-anes_res <- read.csv("anes_w3_mediation_results_expanded_wellbeing.csv")
+anes_res <- read.csv("anes_w3_mediation_results.csv")
 
 #############################################
 # Format helpers

@@ -24,8 +24,8 @@ activities <- c(
 )
 
 mediators_to_plot <- c(
-  "total_platform", platforms, "total_activity", activities, "sm_minutes"
-)
+  "total_platform", platforms,"sm_minutes"
+) # "total_activity" and activities have been excluded
 
 outcome_order <- c(
   "Affective Wellbeing",
@@ -47,20 +47,20 @@ mediator_order <- c(
   "Snapchat",
   "Tiktok",
   "Twitter",
-  "Youtube",
-  " ",
-  "Overall Screentime",
-  "Creativity",
-  "Education",
-  "Entertainment",
-  "Games",
-  "Health",
-  "Information",
-  "Other",
-  "Productivity",
-  "Shopping",
-  "Social",
-  "Utilities"
+  "Youtube"
+  # " ",
+  # "Overall Screentime",
+  # "Creativity",
+  # "Education",
+  # "Entertainment",
+  # "Games",
+  # "Health",
+  # "Information",
+  # "Other",
+  # "Productivity",
+  # "Shopping",
+  # "Social",
+  # "Utilities"
 )
 
 level_shape_vals <- c(

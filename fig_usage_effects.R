@@ -115,7 +115,7 @@ bubble_df <- bind_rows(
     mutate(level = "Momentary")
 ) %>%
   # keep mediators you care about across platforms, activities, and total social media time
-  filter(mediator %in% c(platforms, activities, minutes)) %>%
+  filter(mediator %in% c(platforms, minutes)) %>%
   mutate(
     mediator = case_when(
       mediator %in% c("total_platform", "social", "sm_minutes") ~ "Social Media",
@@ -205,8 +205,8 @@ p <- ggplot(bubble_df, aes(x = a, y = b)) +
                      breaks = seq(-x_limit, x_limit, by = 0.1),
                      labels = axis_labels) +
   labs(
-    x = "Liberalism                                       Conservatism\n\nAssociations between Political Orientation and Social/Digital Media Use",
-    y = "Associations between Social/Digital Media Use and Wellbeing\n\nLower wellbeing                              Higher wellbeing"
+    x = "Liberalism                                 Conservatism\n\nAssociations between Political Orientation and Social Media Use",
+    y = "Associations between Social Media Use and Wellbeing\n\nLower wellbeing                              Higher wellbeing"
       ) +
   theme_clean +
   theme(panel.grid.minor = element_blank(),

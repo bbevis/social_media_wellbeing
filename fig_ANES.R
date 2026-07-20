@@ -19,6 +19,44 @@ platforms <- c(
   "total_platform_frequency"
 )
 
+mediator_order <- c(
+  "Social Media",
+  "Facebook",
+  "Instagram",
+  "Reddit",
+  "TikTok",
+  "Twitter",
+  "YouTube"
+)
+
+outcome_labels <- c(
+  "loneliness" = "Loneliness (r)",
+  "anhedonia" = "Anhedonia (r)",
+  "depression" = "Depression (r)",
+  "affective_wellbeing" = "Affective Wellbeing",
+  "happy" = "Happy",
+  "hopeful" = "Hopeful",
+  "afraid" = "Afraid (r)",
+  "angry" = "Angry (r)",
+  "outraged" = "Outraged (r)",
+  "worried" = "Worried (r)"
+)
+
+outcome_order <- unname(outcome_labels)
+
+outcome_shape_vals <- c(
+  "Affective Wellbeing" = 16,
+  "Happy" = 4,
+  "Angry (r)" = 3,
+  "Worried (r)" = 9,
+  "Loneliness (r)" = 6,
+  "Anhedonia (r)" = 17,
+  "Depression (r)" = 15,
+  "Hopeful" = 5,
+  "Afraid (r)" = 8,
+  "Outraged (r)" = 7
+)
+
 #############################################
 # Prepare data
 
@@ -33,13 +71,7 @@ fig_df <- anes_res %>%
     sig_acme = !(acme_ci_low < 0 & acme_ci_high > 0) &
       is.finite(acme_ci_low) &
       is.finite(acme_ci_high),
-    outcome = dplyr::recode(
-      outcome,
-      "loneliness" = "Loneliness (r)",
-      "anhedonia" = "Anhedonia (r)",
-      "depression" = "Depression (r)",
-      "affective_wellbeing" = "Overall Wellbeing"
-    ),
+    outcome = dplyr::recode(outcome, !!!outcome_labels),
     mediator = dplyr::recode(
       mediator,
       "facebook_frequency" = "Facebook",
@@ -54,27 +86,10 @@ fig_df <- anes_res %>%
   ) %>%
   filter(is.finite(a_path_est), is.finite(y_est), is.finite(prop_mediated_est)) %>%
   mutate(
-    outcome = factor(
-      outcome,
-      levels = c(
-        "Loneliness (r)",
-        "Anhedonia (r)",
-        "Depression (r)",
-        "Overall Wellbeing"
-      )
-    ),
+    outcome = factor(outcome, levels = outcome_order),
     color_var = factor(
       color_var,
-      levels = c(
-        "Facebook",
-        "Twitter",
-        "TikTok",
-        "Instagram",
-        "YouTube",
-        "Reddit",
-        "Social Media",
-        "n.s."
-      )
+      levels = c(mediator_order, "n.s.")
     )
   )
 
@@ -82,21 +97,14 @@ fig_df <- anes_res %>%
 # Plot settings
 
 color_palette <- c(
-  "Facebook" = "#0072B2",
-  "Twitter" = "#56B4E9",
-  "TikTok" = "#010101",
-  "Instagram" = "#CC79A7",
+  "Facebook" = "#1877F2",
+  "Twitter" = "#F28E2B",
+  "TikTok" = "#8A3FFC",
+  "Instagram" = "#C13584",
   "YouTube" = "#D55E00",
   "Reddit" = "#E41A1C",
-  "Social Media" = "#009E73",
+  "Social Media" = "#009E9A",
   "n.s." = "grey85"
-)
-
-outcome_shape_vals <- c(
-  "Loneliness (r)" = 16,
-  "Anhedonia (r)" = 17,
-  "Depression (r)" = 15,
-  "Overall Wellbeing" = 18
 )
 
 theme_clean <- theme_minimal(base_size = 20) +
@@ -133,15 +141,7 @@ p <- ggplot(fig_df, aes(x = a_path_est, y = y_est)) +
   scale_color_manual(
     values = color_palette,
     name = NULL,
-    breaks = c(
-      "Facebook",
-      "Twitter",
-      "TikTok",
-      "Instagram",
-      "YouTube",
-      "Reddit",
-      "Social Media"
-    ),
+    breaks = mediator_order,
     guide = guide_legend(override.aes = list(size = 5), order = 2)
   ) +
   scale_shape_manual(

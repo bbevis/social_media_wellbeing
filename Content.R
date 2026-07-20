@@ -4,6 +4,7 @@
 #       
 #############################################
 
+# Study 1
 # Build datasets
 # source("Monthly_build.R")
 # source("Weekly_build.R")
@@ -23,6 +24,9 @@ source("Monthly_analysis.R")
 source("Weekly_analysis.R")
 source("Momentary_analysis.R") ## WARNING. RUNTIME LASTS FOR HOURS/DAYS!! ##
 
+# Study 2
+source("ANES_build.R")
+source("ANES_analysis.R") # All ANES mediation and age-moderation models; writes the unified results file
 
 # Plots
 source("fig_PO_wellbeing_effects.R") # H1 path c

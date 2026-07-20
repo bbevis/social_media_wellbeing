@@ -19,6 +19,44 @@ platforms <- c(
   "total_platform_frequency"
 )
 
+mediator_order <- c(
+  "Social Media",
+  "Facebook",
+  "Instagram",
+  "Reddit",
+  "TikTok",
+  "Twitter",
+  "YouTube"
+)
+
+outcome_labels <- c(
+  "loneliness" = "Loneliness (r)",
+  "anhedonia" = "Anhedonia (r)",
+  "depression" = "Depression (r)",
+  "affective_wellbeing" = "Affective Wellbeing",
+  "happy" = "Happy",
+  "hopeful" = "Hopeful",
+  "afraid" = "Afraid (r)",
+  "angry" = "Angry (r)",
+  "outraged" = "Outraged (r)",
+  "worried" = "Worried (r)"
+)
+
+outcome_order <- unname(outcome_labels)
+
+outcome_shape_vals <- c(
+  "Affective Wellbeing" = 16,
+  "Happy" = 4,
+  "Angry (r)" = 3,
+  "Worried (r)" = 9,
+  "Loneliness (r)" = 6,
+  "Anhedonia (r)" = 17,
+  "Depression (r)" = 15,
+  "Hopeful" = 5,
+  "Afraid (r)" = 8,
+  "Outraged (r)" = 7
+)
+
 #############################################
 # Prepare data
 
@@ -33,6 +71,8 @@ bubble_df <- anes_res %>%
     outcome,
     a_path_est,
     b_path_est,
+    a_path_p,
+    b_path_p,
     prop_mediated_est,
     acme_ci_low,
     acme_ci_high
@@ -42,19 +82,20 @@ bubble_df <- anes_res %>%
     outcome,
     a = a_path_est,
     b = b_path_est,
+    a_p = a_path_p,
+    b_p = b_path_p,
     prop_med = prop_mediated_est,
     lwr = acme_ci_low,
     upr = acme_ci_high
   ) %>%
   mutate(
-    sig_prop_med = !(lwr < 0 & upr > 0) & is.finite(lwr) & is.finite(upr),
-    outcome = dplyr::recode(
-      outcome,
-      "loneliness" = "Loneliness (r)",
-      "anhedonia" = "Anhedonia (r)",
-      "depression" = "Depression (r)",
-      "affective_wellbeing" = "Overall Wellbeing"
-    ),
+    sig_prop_med = a_p <= 0.05 &
+      b_p <= 0.05 &
+      !(lwr < 0 & upr > 0) &
+      is.finite(lwr) &
+      is.finite(upr),
+    outcome = dplyr::recode(outcome, !!!outcome_labels),
+    outcome = factor(outcome, levels = outcome_order),
     mediator = dplyr::recode(
       mediator,
       "facebook_frequency" = "Facebook",
@@ -70,13 +111,13 @@ bubble_df <- anes_res %>%
   filter(is.finite(a), is.finite(b), is.finite(prop_med))
 
 color_palette <- c(
-  "Facebook" = "#0072B2",
-  "Twitter" = "#56B4E9",
-  "TikTok" = "#010101",
-  "Instagram" = "#CC79A7",
+  "Facebook" = "#1877F2",
+  "Twitter" = "#F28E2B",
+  "TikTok" = "#8A3FFC",
+  "Instagram" = "#C13584",
   "YouTube" = "#D55E00",
   "Reddit" = "#E41A1C",
-  "Social Media" = "#009E73",
+  "Social Media" = "#009E9A",
   "n.s." = "grey85"
 )
 
@@ -84,25 +125,9 @@ bubble_df <- bubble_df %>%
   mutate(
     color_var = factor(
       color_var,
-      levels = c(
-        "Facebook",
-        "Twitter",
-        "TikTok",
-        "Instagram",
-        "YouTube",
-        "Reddit",
-        "Social Media",
-        "n.s."
-      )
+      levels = c(mediator_order, "n.s.")
     )
   )
-
-outcome_shape_vals <- c(
-  "Loneliness (r)" = 16,
-  "Anhedonia (r)" = 17,
-  "Depression (r)" = 15,
-  "Overall Wellbeing" = 18
-)
 
 #############################################
 # Plot
@@ -117,6 +142,10 @@ theme_clean <- theme_minimal(base_size = 20) +
 
 x_limit <- max(abs(bubble_df$a), na.rm = TRUE) * 1.12
 y_limit <- max(abs(bubble_df$b), na.rm = TRUE) * 1.12
+x_limit <- max(0.2, ceiling(x_limit * 10) / 10)
+y_limit <- max(0.2, ceiling(y_limit * 10) / 10)
+
+axis_labels <- function(x) sprintf("%.1f", x)
 
 p <- ggplot(bubble_df, aes(x = a, y = b)) +
   geom_hline(yintercept = 0, colour = "black", linetype = "dashed") +
@@ -126,23 +155,15 @@ p <- ggplot(bubble_df, aes(x = a, y = b)) +
     alpha = 0.65
   ) +
   scale_size_area(
-    max_size = 14,
+    max_size = 17,
     name = "Proportion mediated",
-    breaks = c(0.05, 0.10, 0.20),
+    breaks = c(0.025, 0.05, 0.10),
     labels = scales::percent_format(accuracy = 1)
   ) +
   scale_color_manual(
     values = color_palette,
     name = NULL,
-    breaks = c(
-      "Facebook",
-      "Twitter",
-      "TikTok",
-      "Instagram",
-      "YouTube",
-      "Reddit",
-      "Social Media"
-    ),
+    breaks = mediator_order,
     guide = guide_legend(override.aes = list(size = 5), order = 2)
   ) +
   scale_shape_manual(
@@ -150,11 +171,19 @@ p <- ggplot(bubble_df, aes(x = a, y = b)) +
     name = "Wellbeing outcome",
     guide = guide_legend(override.aes = list(size = 5), order = 1)
   ) +
-  scale_x_continuous(limits = c(-x_limit, x_limit)) +
-  scale_y_continuous(limits = c(-y_limit, y_limit)) +
+  scale_y_continuous(
+    limits = c(-y_limit, y_limit),
+    breaks = seq(-y_limit, y_limit, by = 0.1),
+    labels = axis_labels
+  ) +
+  scale_x_continuous(
+    limits = c(-x_limit, x_limit),
+    breaks = seq(-x_limit, x_limit, by = 0.1),
+    labels = axis_labels
+  ) +
   labs(
-    x = "Liberalism                                       Conservatism\n\nAssociations Between Political Orientation and\nSocial Media Use",
-    y = "Associations Between Social Media Use\nand Wellbeing\n\nLower wellbeing                              Higher wellbeing"
+    x = "Liberalism                                 Conservatism\n\nAssociations between Political Orientation and Social Media Use",
+    y = "Associations between Social Media Use and Wellbeing\n\nLower wellbeing                              Higher wellbeing"
   ) +
   theme_clean +
   theme(

@@ -41,7 +41,13 @@ outcomes <- c(
   "loneliness",
   "anhedonia",
   "depression",
-  "affective_wellbeing"
+  "affective_wellbeing",
+  "happy",
+  "hopeful",
+  "afraid",
+  "angry",
+  "outraged",
+  "worried"
 )
 
 mediators <- c(
@@ -168,6 +174,12 @@ run_mediation_set <- function(data, sample_name, control_vars) {
       a_path_adj_r2 = sum_M$adj.r.squared,
       a_path_ci_low = ci_M[IV, 1],
       a_path_ci_high = ci_M[IV, 2],
+      a_iv_age_interaction_est = NA_real_,
+      a_iv_age_interaction_se = NA_real_,
+      a_iv_age_interaction_t = NA_real_,
+      a_iv_age_interaction_p = NA_real_,
+      a_iv_age_interaction_ci_low = NA_real_,
+      a_iv_age_interaction_ci_high = NA_real_,
       
       b_path_est = coef_Y[Mz, "Estimate"],
       b_path_se = coef_Y[Mz, "Std. Error"],
@@ -209,6 +221,22 @@ run_mediation_set <- function(data, sample_name, control_vars) {
       acme_ci_low = med.out$d.avg.ci[1],
       acme_ci_high = med.out$d.avg.ci[2],
       acme_p = med.out$d.avg.p,
+      acme_age_minus_1sd_est = NA_real_,
+      acme_age_minus_1sd_ci_low = NA_real_,
+      acme_age_minus_1sd_ci_high = NA_real_,
+      acme_age_minus_1sd_p = NA_real_,
+      acme_age_mean_est = NA_real_,
+      acme_age_mean_ci_low = NA_real_,
+      acme_age_mean_ci_high = NA_real_,
+      acme_age_mean_p = NA_real_,
+      acme_age_plus_1sd_est = NA_real_,
+      acme_age_plus_1sd_ci_low = NA_real_,
+      acme_age_plus_1sd_ci_high = NA_real_,
+      acme_age_plus_1sd_p = NA_real_,
+      acme_age_plus_1sd_minus_minus_1sd_est = NA_real_,
+      acme_age_plus_1sd_minus_minus_1sd_ci_low = NA_real_,
+      acme_age_plus_1sd_minus_minus_1sd_ci_high = NA_real_,
+      acme_age_plus_1sd_minus_minus_1sd_p = NA_real_,
       
       ade_est = med.out$z.avg,
       ade_ci_low = med.out$z.avg.ci[1],
@@ -252,9 +280,12 @@ run_age_moderation_set <- function(data, sample_name, control_vars) {
       model_data$age_z <- as.numeric(scale(model_data$age))
       
       controls_str <- paste(c("age_z", control_vars), collapse = " + ")
-      interaction_term <- paste0(Mz, ":age_z")
+      a_interaction_term <- paste0(IV, ":age_z")
+      b_interaction_term <- paste0(Mz, ":age_z")
       
-      formula.M <- as.formula(paste(Mz, "~", IV, "+", controls_str))
+      formula.M <- as.formula(
+        paste(Mz, "~", IV, "* age_z +", paste(control_vars, collapse = " + "))
+      )
       formula.Y <- as.formula(
         paste(Yz, "~", IV, "+", Mz, "* age_z +", paste(control_vars, collapse = " + "))
       )
@@ -276,6 +307,31 @@ run_age_moderation_set <- function(data, sample_name, control_vars) {
         sims = n_sims,
         boot = TRUE
       )
+
+      run_conditional_mediation <- function(age_z_value) {
+        mediation::mediate(
+          model.M,
+          model.Y,
+          treat = IV,
+          mediator = Mz,
+          covariates = list(age_z = age_z_value),
+          sims = n_sims,
+          boot = TRUE
+        )
+      }
+
+      med.out.age.minus_1sd <- run_conditional_mediation(-1)
+      med.out.age.mean <- run_conditional_mediation(0)
+      med.out.age.plus_1sd <- run_conditional_mediation(1)
+
+      modmed.test <- mediation::test.modmed(
+        med.out,
+        covariates.1 = list(age_z = 1),
+        covariates.2 = list(age_z = -1),
+        sims = n_sims,
+        conf.level = ci_level
+      )
+      acme_age_difference <- modmed.test[[1]]
       
       sum_M <- summary(model.M)
       sum_Y <- summary(model.Y)
@@ -306,6 +362,12 @@ run_age_moderation_set <- function(data, sample_name, control_vars) {
         a_path_adj_r2 = sum_M$adj.r.squared,
         a_path_ci_low = ci_M[IV, 1],
         a_path_ci_high = ci_M[IV, 2],
+        a_iv_age_interaction_est = coef_M[a_interaction_term, "Estimate"],
+        a_iv_age_interaction_se = coef_M[a_interaction_term, "Std. Error"],
+        a_iv_age_interaction_t = coef_M[a_interaction_term, "t value"],
+        a_iv_age_interaction_p = coef_M[a_interaction_term, "Pr(>|t|)"],
+        a_iv_age_interaction_ci_low = ci_M[a_interaction_term, 1],
+        a_iv_age_interaction_ci_high = ci_M[a_interaction_term, 2],
         
         b_path_est = coef_Y[Mz, "Estimate"],
         b_path_se = coef_Y[Mz, "Std. Error"],
@@ -316,12 +378,12 @@ run_age_moderation_set <- function(data, sample_name, control_vars) {
         b_path_adj_r2 = sum_Y$adj.r.squared,
         b_path_ci_low = ci_Y[Mz, 1],
         b_path_ci_high = ci_Y[Mz, 2],
-        b_mediator_age_interaction_est = coef_Y[interaction_term, "Estimate"],
-        b_mediator_age_interaction_se = coef_Y[interaction_term, "Std. Error"],
-        b_mediator_age_interaction_t = coef_Y[interaction_term, "t value"],
-        b_mediator_age_interaction_p = coef_Y[interaction_term, "Pr(>|t|)"],
-        b_mediator_age_interaction_ci_low = ci_Y[interaction_term, 1],
-        b_mediator_age_interaction_ci_high = ci_Y[interaction_term, 2],
+        b_mediator_age_interaction_est = coef_Y[b_interaction_term, "Estimate"],
+        b_mediator_age_interaction_se = coef_Y[b_interaction_term, "Std. Error"],
+        b_mediator_age_interaction_t = coef_Y[b_interaction_term, "t value"],
+        b_mediator_age_interaction_p = coef_Y[b_interaction_term, "Pr(>|t|)"],
+        b_mediator_age_interaction_ci_low = ci_Y[b_interaction_term, 1],
+        b_mediator_age_interaction_ci_high = ci_Y[b_interaction_term, 2],
         
         c_path_est = coef_c[IV, "Estimate"],
         c_path_se = coef_c[IV, "Std. Error"],
@@ -347,6 +409,22 @@ run_age_moderation_set <- function(data, sample_name, control_vars) {
         acme_ci_low = med.out$d.avg.ci[1],
         acme_ci_high = med.out$d.avg.ci[2],
         acme_p = med.out$d.avg.p,
+        acme_age_minus_1sd_est = med.out.age.minus_1sd$d.avg,
+        acme_age_minus_1sd_ci_low = med.out.age.minus_1sd$d.avg.ci[1],
+        acme_age_minus_1sd_ci_high = med.out.age.minus_1sd$d.avg.ci[2],
+        acme_age_minus_1sd_p = med.out.age.minus_1sd$d.avg.p,
+        acme_age_mean_est = med.out.age.mean$d.avg,
+        acme_age_mean_ci_low = med.out.age.mean$d.avg.ci[1],
+        acme_age_mean_ci_high = med.out.age.mean$d.avg.ci[2],
+        acme_age_mean_p = med.out.age.mean$d.avg.p,
+        acme_age_plus_1sd_est = med.out.age.plus_1sd$d.avg,
+        acme_age_plus_1sd_ci_low = med.out.age.plus_1sd$d.avg.ci[1],
+        acme_age_plus_1sd_ci_high = med.out.age.plus_1sd$d.avg.ci[2],
+        acme_age_plus_1sd_p = med.out.age.plus_1sd$d.avg.p,
+        acme_age_plus_1sd_minus_minus_1sd_est = unname(acme_age_difference$statistic),
+        acme_age_plus_1sd_minus_minus_1sd_ci_low = acme_age_difference$conf.int[1],
+        acme_age_plus_1sd_minus_minus_1sd_ci_high = acme_age_difference$conf.int[2],
+        acme_age_plus_1sd_minus_minus_1sd_p = acme_age_difference$p.value,
         
         ade_est = med.out$z.avg,
         ade_ci_low = med.out$z.avg.ci[1],

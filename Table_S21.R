@@ -13,7 +13,7 @@ library(magick)
 #############################################
 # Load data
 
-anes_w3 <- read.csv("anes_w3.csv")
+anes_res <- read.csv("anes_w3_mediation_results.csv")
 
 #############################################
 # Format helpers
@@ -71,56 +71,20 @@ outcome_order <- c(
   "Worried (r)"
 )
 
-full_sample_controls <- c(
-  "age",
-  "gender",
-  "race_ethnicity",
-  "income",
-  "education"
-)
-
-run_c_path <- function(data, outcome) {
-  all_vars <- c(
+table_df <- anes_res %>%
+  filter(
+    sample == "all",
+    model_type == "mediation",
+    mediator == "total_platform_frequency",
+    outcome %in% names(outcome_lookup)
+  ) %>%
+  transmute(
     outcome,
-    "political_orientation",
-    "total_platform_frequency",
-    full_sample_controls
-  )
-  
-  model_data <- data %>%
-    dplyr::select(all_of(all_vars)) %>%
-    na.omit()
-  
-  model_data$Yz <- as.numeric(scale(model_data[[outcome]]))
-  
-  formula_c <- as.formula(
-    paste(
-      "Yz ~ political_orientation +",
-      paste(full_sample_controls, collapse = " + ")
-    )
-  )
-  
-  model_c <- lm(formula_c, data = model_data)
-  sum_c <- summary(model_c)
-  ci_c <- confint(model_c, level = 0.95)
-  coef_c <- sum_c$coefficients
-  
-  data.frame(
-    outcome = outcome,
-    est = coef_c["political_orientation", "Estimate"],
-    low = ci_c["political_orientation", 1],
-    high = ci_c["political_orientation", 2],
-    p = coef_c["political_orientation", "Pr(>|t|)"]
-  )
-}
-
-table_df <- data.frame(
-  outcome = names(outcome_lookup),
-  stringsAsFactors = FALSE
-) %>%
-  rowwise() %>%
-  do(run_c_path(anes_w3, .$outcome)) %>%
-  ungroup() %>%
+    est = c_path_est,
+    low = c_path_ci_low,
+    high = c_path_ci_high,
+    p = c_path_p
+  ) %>%
   mutate(
     outcome = dplyr::recode(outcome, !!!outcome_lookup),
     outcome = factor(outcome, levels = outcome_order),
