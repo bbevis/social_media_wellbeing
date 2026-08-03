@@ -9,6 +9,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(patchwork)
+library(survey)
 
 #############################################
 # Load data
@@ -60,8 +61,8 @@ coco_platform_vars <- names(platform_lookup)
 #############################################
 # Prepare participant-level platform use
 
-anes_long_all <- anes_w3 %>%
-  select(caseid, young_adult, all_of(anes_platform_vars)) %>%
+anes_long <- anes_w3 %>%
+  select(caseid, w3weight, all_of(anes_platform_vars)) %>%
   pivot_longer(
     cols = all_of(anes_platform_vars),
     names_to = "platform",
@@ -73,14 +74,7 @@ anes_long_all <- anes_w3 %>%
     id = as.character(caseid),
     platform = dplyr::recode(platform, !!!anes_labels)
   ) %>%
-  select(dataset, sample_group, id, platform, raw_use, young_adult)
-
-anes_long_young <- anes_long_all %>%
-  filter(young_adult == 1L) %>%
-  mutate(sample_group = "Young adults")
-
-anes_long <- bind_rows(anes_long_all, anes_long_young) %>%
-  select(dataset, sample_group, id, platform, raw_use)
+  select(dataset, sample_group, id, platform, raw_use, w3weight)
 
 coco_long <- weekly %>%
   filter(ema_50_exclude == 0L) %>%
@@ -129,31 +123,71 @@ platform_use <- bind_rows(anes_long, coco_long) %>%
   mutate(
     platform = factor(platform, levels = platform_order),
     dataset = factor(dataset, levels = c("CoCo", "ANES")),
-    sample_group = factor(sample_group, levels = c("CoCo", "All adults", "Young adults"))
+    sample_group = factor(sample_group, levels = c("CoCo", "All adults"))
   )
 
 #############################################
 # Summaries
 
-platform_summary <- platform_use %>%
+summarise_coco_platforms <- function(data) {
+  data %>%
+    filter(dataset == "CoCo") %>%
+    group_by(dataset, sample_group, platform) %>%
+    summarise(
+      n = n(),
+      mean_raw = mean(raw_use, na.rm = TRUE),
+      sd_raw = sd(raw_use, na.rm = TRUE),
+      se_raw = sd_raw / sqrt(n),
+      ci_raw = qt(0.975, df = n - 1) * se_raw,
+      ci_low_raw = mean_raw - ci_raw,
+      ci_high_raw = mean_raw + ci_raw,
+      .groups = "drop"
+    )
+}
+
+summarise_anes_platforms <- function(data) {
+  data %>%
+    filter(dataset == "ANES", !is.na(w3weight)) %>%
+    group_by(dataset, sample_group, platform) %>%
+    group_modify(function(.x, .y) {
+      design <- svydesign(ids = ~1, weights = ~w3weight, data = .x)
+      mean_est <- svymean(~raw_use, design, na.rm = TRUE)
+      variance_est <- svyvar(~raw_use, design, na.rm = TRUE)
+      n <- sum(!is.na(.x$raw_use))
+      se_raw <- as.numeric(SE(mean_est))
+      ci_raw <- qt(0.975, df = degf(design)) * se_raw
+
+      tibble(
+        n = n,
+        mean_raw = as.numeric(coef(mean_est)),
+        sd_raw = sqrt(as.numeric(coef(variance_est))),
+        se_raw = se_raw,
+        ci_raw = ci_raw,
+        ci_low_raw = mean_raw - ci_raw,
+        ci_high_raw = mean_raw + ci_raw
+      )
+    }) %>%
+    ungroup()
+}
+
+platform_summary <- bind_rows(
+  summarise_coco_platforms(platform_use),
+  summarise_anes_platforms(platform_use)
+) %>%
+  mutate(
+    platform = factor(platform, levels = platform_order),
+    dataset = factor(dataset, levels = c("CoCo", "ANES")),
+    sample_group = factor(sample_group, levels = c("CoCo", "All adults"))
+  ) %>%
   group_by(dataset, sample_group, platform) %>%
-  summarise(
-    n = n(),
-    mean_raw = mean(raw_use, na.rm = TRUE),
-    sd_raw = sd(raw_use, na.rm = TRUE),
-    se_raw = sd_raw / sqrt(n),
-    ci_raw = qt(0.975, df = n - 1) * se_raw,
-    ci_low_raw = mean_raw - ci_raw,
-    ci_high_raw = mean_raw + ci_raw,
-    .groups = "drop"
-  )
+  arrange(dataset, sample_group, platform) %>%
+  ungroup()
 
 plot_df <- platform_summary %>%
   mutate(
     platform = factor(platform, levels = rev(platform_order)),
     group_offset = case_when(
-      sample_group == "All adults" ~ -0.13,
-      sample_group == "Young adults" ~ 0.13,
+      sample_group == "All adults" ~ 0,
       TRUE ~ 0
     ),
     platform_y = as.numeric(platform) + group_offset
@@ -178,8 +212,7 @@ guide_color <- "grey85"
 coco_young_adult_color <- "#276CF5"
 
 anes_group_colors <- c(
-  "All adults" = "#D55E00",
-  "Young adults" = coco_young_adult_color
+  "All adults" = "#D55E00"
 )
 
 make_platform_plot <- function(dataset_name, x_title, show_y_axis = TRUE) {
@@ -244,8 +277,8 @@ make_platform_plot <- function(dataset_name, x_title, show_y_axis = TRUE) {
       y = NULL
     ) +
     theme_minimal(base_family = "Helvetica", base_size = 18) +
-    theme(
-      legend.position = if (dataset_name == "ANES") "top" else "none",
+      theme(
+      legend.position = "none",
       legend.text = element_text(size = 14, color = "black"),
       panel.grid.major.x = element_blank(),
       panel.grid.major.y = element_blank(),
@@ -274,10 +307,7 @@ p_anes <- make_platform_plot(
 
 p <- p_coco + p_anes +
   plot_layout(widths = c(1, 1), guides = "collect") &
-  theme(
-    legend.position = "top",
-    legend.justification = "center"
-  )
+  theme(legend.position = "none")
 
 ggsave(
   "Plots/fig_ANES_CoCo_platform_use_comparison.png",

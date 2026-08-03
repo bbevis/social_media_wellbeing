@@ -12,6 +12,7 @@ library(purrr)
 
 weekly_df = read.csv("weekly.csv")
 momentary_df = read.csv("momentary.csv")
+monthly_df = read.csv("monthly.csv")
 
 ########### Define variables
 
@@ -23,17 +24,23 @@ weekly_mediators <- c(
 )
 
 momentary_mediators <- c("sm_minutes")    # only minutes
-app_category_header <- "App Category Use"
+app_category_header <- "Digital Media App Use"
 social_media_header <- "Social Media App Use"
 
 pretty_mediator <- function(x) {
   x <- dplyr::recode(
     x,
     "total_activity"     = "Overall Screentime",
+    "total_platform"     = "Overall Social Media Use",
     "social"             = "Social Media",
     "sm_minutes"         = "Social Media Time"
   )
-  tools::toTitleCase(gsub("_", " ", x))
+  x <- tools::toTitleCase(gsub("_", " ", x))
+  dplyr::recode(
+    x,
+    "Tiktok"  = "TikTok",
+    "Youtube" = "YouTube"
+  )
 }
 
 # Compute descriptives for a given dataset & vars
@@ -92,7 +99,7 @@ mediation_order <- c(
   "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
   "Other", "Productivity", "Shopping", "Social Media", "Utilities",
   "Individual Social Media Apps",
-  "Facebook", "Instagram", "Reddit", "Snapchat", "Tiktok", "Twitter", "Youtube"
+  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
 )
 
 weekly_desc <- make_desc_stats(weekly_df, "Weekly",
@@ -144,7 +151,7 @@ tbl_weekly_categories <- tbl_weekly %>%
 
 tbl_weekly_platforms <- tbl_weekly %>%
   filter(as.character(Variable) %in% c(
-    "Facebook", "Instagram", "Reddit", "Snapchat", "Tiktok", "Twitter", "Youtube"
+    "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
   ))
 
 tbl3 <- bind_rows(
@@ -284,3 +291,78 @@ tbl_final <- tbl3 %>%
 
 # Save
 gtsave(tbl_final, "Plots/tables_desc_mediators_combined.png", vwidth = 2000, vheight = 0)
+
+
+############ Descriptives by political orientation
+
+social_media_vars <- c(
+  "total_platform", "facebook", "instagram", "reddit",
+  "snapchat", "tiktok", "twitter", "youtube"
+)
+
+make_grouped_desc <- function(df, level_label, vars, row_filter_col = NULL) {
+  df <- df %>%
+    mutate(
+      Political_group = factor(
+        case_when(
+          political_orientation %in% 1:2 ~ "Liberal",
+          political_orientation %in% 3:5 ~ "Moderate",
+          political_orientation %in% 6:7 ~ "Conservative",
+          TRUE ~ NA_character_
+        ),
+        levels = c("Liberal", "Moderate", "Conservative")
+      )
+    )
+
+  if (!is.null(row_filter_col) && row_filter_col %in% names(df)) {
+    df <- filter(df, .data[[row_filter_col]] == 0L)
+  }
+
+  map_dfr(vars, function(v) {
+    exclusion_col <- paste0(v, "_exclude")
+    temp_df <- df
+
+    if (exclusion_col %in% names(temp_df)) {
+      temp_df <- filter(temp_df, .data[[exclusion_col]] == 0L)
+    }
+
+    temp_df %>%
+      filter(!is.na(Political_group), !is.na(.data[[v]])) %>%
+      group_by(id, Political_group) %>%
+      summarise(Value = mean(.data[[v]], na.rm = TRUE), .groups = "drop") %>%
+      group_by(Political_group) %>%
+      summarise(
+        `N participants` = n(),
+        Mean = mean(Value),
+        SD = sd(Value),
+        .groups = "drop"
+      ) %>%
+      mutate(Level = level_label, Variable = pretty_mediator(v), .before = 1)
+  })
+}
+
+grouped_desc <- bind_rows(
+  make_grouped_desc(momentary_df, "Momentary", "sm_minutes"),
+  make_grouped_desc(
+    weekly_df, "Weekly", social_media_vars,
+    row_filter_col = "ema_50_exclude"
+  ),
+  make_grouped_desc(monthly_df, "Monthly", social_media_vars)
+) %>%
+  mutate(
+    Level = factor(Level, levels = c("Momentary", "Weekly", "Monthly")),
+    Variable = factor(
+      Variable,
+      levels = pretty_mediator(c("sm_minutes", social_media_vars))
+    ),
+    Mean = round(Mean, 2),
+    SD = round(SD, 2)
+  ) %>%
+  arrange(Level, Variable, Political_group) %>%
+  rename(`Political group` = Political_group)
+
+write.csv(
+  grouped_desc,
+  "study1_social_media_by_political_group.csv",
+  row.names = FALSE
+)

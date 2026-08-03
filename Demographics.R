@@ -189,11 +189,14 @@ post_df <- bind_rows(
   filter(id %in% post_ids) %>%
   mutate(
     with_ema = id %in% ema_ids,
-    political_group = case_when(
-      political_orientation %in% c(1, 2, 3) ~ "Liberal",
-      political_orientation == 4 ~ "Moderate",
-      political_orientation %in% c(5, 6, 7) ~ "Conservative",
-      TRUE ~ NA_character_
+    political_group = factor(
+      case_when(
+        political_orientation %in% 1:2 ~ "Liberal",
+        political_orientation %in% 3:5 ~ "Moderate",
+        political_orientation %in% 6:7 ~ "Conservative",
+        TRUE ~ NA_character_
+      ),
+      levels = c("Liberal", "Moderate", "Conservative")
     )
   )
 
@@ -299,13 +302,19 @@ po_summary <- bind_rows(
     transmute(metric, value = percent)
 )
 
+political_group_summary <- post_po %>%
+  count(political_group) %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+
 
 # -----------------------------------------------------------------------------
 # Outputs
 # -----------------------------------------------------------------------------
 
 print(sample_description)
+print(political_group_summary)
 print(po_summary)
 
 write.csv(sample_description, "sample_description_metrics.csv", row.names = FALSE)
+write.csv(political_group_summary, "political_orientation_liberal_conservative.csv", row.names = FALSE)
 write.csv(po_summary, "political_orientation_attrition_metrics.csv", row.names = FALSE)

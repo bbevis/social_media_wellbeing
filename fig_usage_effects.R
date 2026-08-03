@@ -133,7 +133,7 @@ bubble_df <- bind_rows(
     ),
     sig_row = path_a_p <= 0.05 &
       path_b_p <= 0.05 &
-      !(ACME_CI_lower < 0 & ACME_CI_upper > 0) &
+      (ACME_CI_lower > 0 | ACME_CI_upper < 0) &
       is.finite(ACME_CI_lower) &
       is.finite(ACME_CI_upper)
   ) %>%

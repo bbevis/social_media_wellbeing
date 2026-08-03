@@ -46,13 +46,6 @@ format_est_ci <- function(est, low, high) {
 # Prepare data
 
 outcome_lookup <- c(
-  "affective_wellbeing" = "Affective Wellbeing",
-  "happy" = "Happy",
-  "hopeful" = "Hopeful",
-  "afraid" = "Afraid (r)",
-  "angry" = "Angry (r)",
-  "outraged" = "Outraged (r)",
-  "worried" = "Worried (r)",
   "loneliness" = "Loneliness (r)",
   "anhedonia" = "Anhedonia (r)",
   "depression" = "Depression (r)"
@@ -61,14 +54,7 @@ outcome_lookup <- c(
 outcome_order <- c(
   "Loneliness (r)",
   "Anhedonia (r)",
-  "Depression (r)",
-  "Affective Wellbeing",
-  "Happy",
-  "Hopeful",
-  "Afraid (r)",
-  "Angry (r)",
-  "Outraged (r)",
-  "Worried (r)"
+  "Depression (r)"
 )
 
 table_df <- anes_res %>%
@@ -88,23 +74,11 @@ table_df <- anes_res %>%
   mutate(
     outcome = dplyr::recode(outcome, !!!outcome_lookup),
     outcome = factor(outcome, levels = outcome_order),
-    row_type = case_when(
-      outcome == "Affective Wellbeing" ~ "overall",
-      outcome %in% c(
-        "Happy",
-        "Hopeful",
-        "Afraid (r)",
-        "Angry (r)",
-        "Outraged (r)",
-        "Worried (r)"
-      ) ~ "affective_item",
-      TRUE ~ "symptom_item"
-    ),
     est_ci = format_est_ci(est, low, high),
     p_fmt = format_p(p),
     sig = p <= 0.05
   ) %>%
-  dplyr::select(outcome, row_type, est_ci, p_fmt, sig) %>%
+  dplyr::select(outcome, est_ci, p_fmt, sig) %>%
   arrange(outcome)
 
 #############################################
@@ -112,7 +86,7 @@ table_df <- anes_res %>%
 
 table_s21 <- table_df %>%
   gt(rowname_col = "outcome") %>%
-  cols_hide(c(row_type, sig)) %>%
+  cols_hide(sig) %>%
   cols_label(
     est_ci = "Estimate [95% CI]",
     p_fmt = md("*p*")
@@ -125,14 +99,6 @@ table_s21 <- table_df %>%
   tab_style(
     style = cell_text(align = "left", indent = px(20)),
     locations = cells_stub()
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_stub(rows = outcome == "Affective Wellbeing")
-  ) %>%
-  tab_style(
-    style = cell_text(indent = px(40)),
-    locations = cells_stub(rows = row_type == "affective_item")
   ) %>%
   tab_options(
     table.font.size = px(23),

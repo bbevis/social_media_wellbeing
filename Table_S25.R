@@ -8,6 +8,7 @@
 library(dplyr)
 library(tidyr)
 library(gt)
+library(survey)
 
 #############################################
 # Load data
@@ -42,16 +43,9 @@ cor_vars <- c(
   "tiktok_frequency",
   "youtube_frequency",
   "twitter_frequency",
-  "affective_wellbeing",
   "loneliness",
   "anhedonia",
-  "depression",
-  "happy",
-  "hopeful",
-  "afraid",
-  "angry",
-  "outraged",
-  "worried"
+  "depression"
 )
 
 var_labels <- c(
@@ -63,16 +57,9 @@ var_labels <- c(
   "tiktok_frequency" = "TikTok",
   "twitter_frequency" = "Twitter",
   "youtube_frequency" = "YouTube",
-  "affective_wellbeing" = "Affective Wellbeing",
   "loneliness" = "Loneliness (r)",
   "anhedonia" = "Anhedonia (r)",
-  "depression" = "Depression (r)",
-  "happy" = "Happy",
-  "hopeful" = "Hopeful",
-  "afraid" = "Afraid (r)",
-  "angry" = "Angry (r)",
-  "outraged" = "Outraged (r)",
-  "worried" = "Worried (r)"
+  "depression" = "Depression (r)"
 )
 
 var_sections <- c(
@@ -84,16 +71,9 @@ var_sections <- c(
   "tiktok_frequency" = "Social Media Use",
   "twitter_frequency" = "Social Media Use",
   "youtube_frequency" = "Social Media Use",
-  "affective_wellbeing" = "Wellbeing Outcomes",
   "loneliness" = "Wellbeing Outcomes",
   "anhedonia" = "Wellbeing Outcomes",
-  "depression" = "Wellbeing Outcomes",
-  "happy" = "Wellbeing Outcomes",
-  "hopeful" = "Wellbeing Outcomes",
-  "afraid" = "Wellbeing Outcomes",
-  "angry" = "Wellbeing Outcomes",
-  "outraged" = "Wellbeing Outcomes",
-  "worried" = "Wellbeing Outcomes"
+  "depression" = "Wellbeing Outcomes"
 )
 
 section_order <- c(
@@ -103,31 +83,69 @@ section_order <- c(
 )
 
 #############################################
-# Spearman correlations with age
+#############################################
+# Survey-weighted associations with age
 
-cor_df <- anes_w3 %>%
-  dplyr::select(age, all_of(cor_vars)) %>%
-  pivot_longer(
-    cols = all_of(cor_vars),
-    names_to = "variable",
-    values_to = "value"
-  ) %>%
-  filter(!is.na(age), !is.na(value)) %>%
-  group_by(variable) %>%
-  summarise(
-    n = n(),
-    rho = suppressWarnings(
-      cor(age, value, method = "spearman", use = "complete.obs")
-    ),
-    p = suppressWarnings(
-      cor.test(age, value, method = "spearman", exact = FALSE)$p.value
-    ),
-    .groups = "drop"
-  ) %>%
+weighted_z <- function(x, w) {
+  mean_x <- weighted.mean(x, w, na.rm = TRUE)
+  sd_x <- sqrt(sum(w * (x - mean_x)^2, na.rm = TRUE) / sum(w, na.rm = TRUE))
+  (x - mean_x) / sd_x
+}
+
+age_association <- function(variable) {
+  model_data <- anes_w3 %>%
+    dplyr::select(age, value = all_of(variable), w3weight) %>%
+    na.omit()
+
+  model_data <- model_data %>%
+    mutate(
+      age_z = weighted_z(age, w3weight),
+      value_z = weighted_z(value, w3weight)
+    )
+
+  design <- svydesign(
+    ids = ~1,
+    weights = ~w3weight,
+    data = model_data
+  )
+
+  model <- svyglm(value_z ~ age_z, design = design)
+  coefficient <- summary(model)$coefficients["age_z", ]
+  interval <- as.numeric(confint(model, parm = "age_z"))
+
+  tibble(
+    variable = variable,
+    n = nrow(model_data),
+    estimate = unname(coefficient[1]),
+    se = unname(coefficient[2]),
+    t = unname(coefficient[3]),
+    p = unname(coefficient[4]),
+    df = df.residual(model),
+    ci_low = interval[1],
+    ci_high = interval[2]
+  )
+}
+
+age_results <- bind_rows(lapply(cor_vars, age_association))
+
+write.csv(
+  age_results,
+  "anes_age_association_results.csv",
+  row.names = FALSE
+)
+
+cor_df <- age_results %>%
   mutate(
     section = factor(unname(var_sections[variable]), levels = section_order),
     variable = factor(unname(var_labels[variable]), levels = unname(var_labels[cor_vars])),
-    rho_fmt = format_decimal(rho, 3),
+    est_ci = paste0(
+      format_decimal(estimate, 3),
+      " [",
+      format_decimal(ci_low, 3),
+      ", ",
+      format_decimal(ci_high, 3),
+      "]"
+    ),
     p_fmt = format_p(p),
     sig = p <= 0.05,
     row_type = "measure",
@@ -135,7 +153,7 @@ cor_df <- anes_w3 %>%
     row_order = as.integer(variable)
   ) %>%
   arrange(section, variable) %>%
-  dplyr::select(section, row_type, row_label, row_order, rho_fmt, p_fmt, sig)
+  dplyr::select(section, row_type, row_label, row_order, est_ci, p_fmt, sig)
 
 headers <- cor_df %>%
   distinct(section) %>%
@@ -143,7 +161,7 @@ headers <- cor_df %>%
     row_type = "section",
     row_label = "\u00a0",
     row_order = 0L,
-    rho_fmt = "\u00a0",
+    est_ci = "\u00a0",
     p_fmt = "\u00a0",
     sig = FALSE
   )
@@ -160,18 +178,22 @@ table_s25 <- table_df %>%
   cols_hide(c(section, row_type, row_order, sig)) %>%
   cols_label(
     row_label = "",
-    rho_fmt = "Spearman rho",
+    est_ci = "Estimate [95% CI]",
     p_fmt = md("*p*")
   ) %>%
-  cols_align("center", columns = c(rho_fmt, p_fmt)) %>%
+  cols_align("center", columns = c(est_ci, p_fmt)) %>%
   cols_align("left", columns = row_label) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_body(rows = sig, columns = c(rho_fmt, p_fmt))
+    locations = cells_body(rows = sig, columns = c(est_ci, p_fmt))
   ) %>%
   tab_style(
     style = cell_text(indent = px(30)),
     locations = cells_body(rows = row_type == "measure", columns = row_label)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(rows = row_label == "Social Media", columns = row_label)
   ) %>%
   tab_style(
     style = cell_text(size = px(18)),

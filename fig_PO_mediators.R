@@ -9,16 +9,12 @@ library(ggplot2)
 library(ggstance)
 library(stringr)
 
-monthly_res = read.csv('monthly_results_withcontrols.csv')
-weekly_res = read.csv('weekly_results_withcontrols.csv')
-momentary_res = read.csv('momentary_results_withcontrols.csv')
+path_a_res <- read.csv("study1_path_a_results.csv")
 
-platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
-activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other","health", "total_activity")
-minutes <- c("sm_minutes")
-
-
+reported_mediators <- c(
+  "facebook", "twitter", "tiktok", "instagram", "youtube", "reddit",
+  "snapchat", "social", "sm_minutes"
+)
 
 level_shape_vals <- c(
   "Monthly"   = 16,  # filled circle
@@ -26,68 +22,56 @@ level_shape_vals <- c(
   "Momentary" = 15   # filled square
 )
 
-
-plot_df <- monthly_res %>%
-  filter(outcome == 'awb_t2') %>%
-  dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-  mutate(level = 'Monthly') %>%
-  bind_rows(
-    weekly_res %>%
-      filter(outcome == 'awb_week') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Weekly')) %>%
-    bind_rows(
-      momentary_res %>%
-      filter(outcome == 'awb_momentary') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Momentary')) %>%
-  filter(mediator %in% c(platforms, minutes, "social")) %>%
-  group_by(mediator, level) %>%
-  summarise(
-    m   = mean(path_a),
-    lwr = mean(path_a_CI_lower, na.rm = TRUE),
-    upr = mean(path_a_CI_upper, na.rm = TRUE),
-    p   = mean(path_a_p),
-    .groups = "drop"
+plot_df <- path_a_res %>%
+  filter(mediator %in% reported_mediators) %>%
+  transmute(
+    level,
+    mediator,
+    m = estimate,
+    lwr = ci_low,
+    upr = ci_high,
+    p
   ) %>%
   mutate(
     level = factor(level, levels = c("Monthly","Weekly","Momentary")),
     sig   = p <= 0.05,
-    type  = case_when(
-      mediator %in% platforms  ~ "Platform",
-      mediator %in% activities ~ "Activity",
-      TRUE ~ "Rest"
-    ),
     mediator = case_when(
-      mediator == "total_platform"  ~ NA_character_,
-      mediator == "total_activity"  ~ "All Apps",
-      mediator == "sm_minutes"  ~ "Social Media",
-      mediator == "social" ~ "Social Media",
+      mediator %in% c("sm_minutes", "social") ~ "Social Media",
       TRUE ~ mediator
     ),
     mediator = tools::toTitleCase(mediator),
+    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube"),
     color_var = ifelse(sig, "sig", "n.s.")
   )
 
 mediator_order <- c(
   "Social Media",
-  "Facebook", "Instagram", "Reddit", "Snapchat", "Tiktok", "Twitter", "Youtube"
+  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
 )
 
 mediator_order = rev(mediator_order)
 
+stopifnot(
+  nrow(plot_df) == 17,
+  !anyDuplicated(plot_df[c("level", "mediator")]),
+  all(is.finite(plot_df$m)),
+  all(is.finite(plot_df$lwr)),
+  all(is.finite(plot_df$upr))
+)
 
 plot_df <- plot_df %>%
-  filter(!is.na(mediator)) %>%
   mutate(mediator = factor(mediator, levels = mediator_order))
 
-# Exclude shopping and utilities due to small size
-plot_df <- plot_df %>%
-  filter(!mediator%in%c("All Apps",
-                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-                        "Other", "Productivity", "Shopping", "Utilities"))
-
 y_limits <- seq(1.5, length(unique(plot_df$mediator)) - 0.5, by = 1)
+
+y_axis_labels <- function(x) {
+  labels <- ifelse(
+    x == "Social Media",
+    "bold('Social Media')",
+    paste0("'", str_wrap(x, width = 20), "'")
+  )
+  parse(text = labels)
+}
 
 
 # clean theme
@@ -123,7 +107,7 @@ ggplot(
   geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
   scale_x_continuous(limits = c(-.5, .5),
                      breaks = seq(-.5, .5, by = .2)) +
-  scale_y_discrete(labels = function(x) str_wrap(x, width = 20)) +
+  scale_y_discrete(labels = y_axis_labels) +
   # scale_y_discrete(limits = y_limits, drop = FALSE) +  # keep the blank rows
   scale_color_manual(
     values = c("sig" = "#276CF5", "n.s." = "grey85"),

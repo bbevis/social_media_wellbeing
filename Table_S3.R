@@ -14,9 +14,7 @@ library(webshot2)
 #############################################
 # Load data
 
-monthly_wc = read.csv('monthly_results_withcontrols.csv')
-weekly_wc = read.csv('weekly_results_withcontrols.csv')
-momentary_wc = read.csv('momentary_results_withcontrols.csv')
+path_a_res <- read.csv("study1_path_a_results.csv")
 
 platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
@@ -26,28 +24,15 @@ minutes <- c("sm_minutes")
 #############################################
 # H2 table: combine and summarise
 
-h2_df = monthly_wc %>%
-  filter(outcome == 'awb_t2') %>%
-  dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-  mutate(level = 'Monthly') %>%
-  bind_rows(
-    weekly_wc %>%
-      filter(outcome == 'awb_week') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Weekly')) %>%
-  bind_rows(
-    momentary_wc %>%
-      filter(outcome == 'awb_momentary') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Momentary')) %>%
+h2_df <- path_a_res %>%
   filter(mediator %in% c(platforms, activities, minutes)) %>%
-  group_by(mediator, level) %>%
-  summarise(
-    m   = mean(path_a),
-    lwr = mean(path_a_CI_lower, na.rm = TRUE),
-    upr = mean(path_a_CI_upper, na.rm = TRUE),
-    p   = mean(path_a_p),
-    .groups = "drop"
+  transmute(
+    mediator,
+    level,
+    m = estimate,
+    lwr = ci_low,
+    upr = ci_high,
+    p
   ) %>%
   mutate(
     mediator_raw = mediator,

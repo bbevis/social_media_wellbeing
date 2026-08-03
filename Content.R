@@ -23,10 +23,13 @@ source("Desc_stats_outcomes.R")
 source("Monthly_analysis.R")
 source("Weekly_analysis.R")
 source("Momentary_analysis.R") ## WARNING. RUNTIME LASTS FOR HOURS/DAYS!! ##
+source("Study1_path_a_analysis.R") # Standalone H2 path a models
 
 # Study 2
 source("ANES_build.R")
 source("ANES_analysis.R") # All ANES mediation and age-moderation models; writes the unified results file
+source("ANES_path_a_analysis.R") # Standalone weighted path a models
+source("ANES_path_a_age_moderation.R") # Standalone weighted age-moderated path a models
 
 # Plots
 source("fig_PO_wellbeing_effects.R") # H1 path c
@@ -35,7 +38,11 @@ source("fig_b_path_by_outcome_facets.R") # H3 path b
 source("fig_ACME.R") # H4
 source("fig_usage_effects.R") # H4
 source("fig_ANES_social_media_distribution.R") # Frequency by age by platform
+source("fig_ANES_PO_wellbeing_effects.R") # H1 path c
+source("fig_ANES_PO_mediators.R") # H2 path a
+source("fig_ANES_b_path_by_outcome_facets.R") # H3 path b
 source("fig_ANES.R") # Proportion mediated
+source("fig_ANES_age_moderation.R") # Age-moderated paths a and b
 
 # Supplementary materials
 source("Table_S1.R")
@@ -65,4 +72,3 @@ source("Table_S22.R")
 source("Table_S23.R")
 source("Table_S24.R")
 source("Table_S25.R")
-source("Table_S26.R")

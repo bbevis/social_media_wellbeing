@@ -48,14 +48,7 @@ format_est_ci <- function(est, low, high) {
 outcome_order <- c(
   "Loneliness (r)",
   "Anhedonia (r)",
-  "Depression (r)",
-  "Affective Wellbeing",
-  "Happy",
-  "Hopeful",
-  "Afraid (r)",
-  "Angry (r)",
-  "Outraged (r)",
-  "Worried (r)"
+  "Depression (r)"
 )
 
 mediator_order <- c(
@@ -70,26 +63,16 @@ mediator_order <- c(
 
 table_df <- anes_res %>%
   filter(
-    (sample == "all" & model_type == "mediation") |
-      model_type %in% c("age_moderator", "age_moderation")
+    sample == "all",
+    model_type == "mediation",
+    outcome %in% c("loneliness", "anhedonia", "depression")
   ) %>%
   mutate(
-    model = case_when(
-      sample == "all" & model_type == "mediation" ~ "model_1",
-      model_type %in% c("age_moderator", "age_moderation") ~ "model_2"
-    ),
     outcome = dplyr::recode(
       outcome,
       "loneliness" = "Loneliness (r)",
       "anhedonia" = "Anhedonia (r)",
-      "depression" = "Depression (r)",
-      "affective_wellbeing" = "Affective Wellbeing",
-      "happy" = "Happy",
-      "hopeful" = "Hopeful",
-      "afraid" = "Afraid (r)",
-      "angry" = "Angry (r)",
-      "outraged" = "Outraged (r)",
-      "worried" = "Worried (r)"
+      "depression" = "Depression (r)"
     ),
     mediator = dplyr::recode(
       mediator,
@@ -107,12 +90,7 @@ table_df <- anes_res %>%
     p_fmt = format_p(acme_p),
     sig = acme_p <= 0.05
   ) %>%
-  dplyr::select(mediator, outcome, model, est_ci, p_fmt, sig) %>%
-  pivot_wider(
-    names_from = model,
-    values_from = c(est_ci, p_fmt, sig),
-    names_sep = "_"
-  ) %>%
+  dplyr::select(mediator, outcome, est_ci, p_fmt, sig) %>%
   arrange(mediator, outcome)
 
 #############################################
@@ -122,12 +100,9 @@ headers <- table_df %>%
   distinct(mediator) %>%
   mutate(
     outcome = NA,
-    est_ci_model_1 = "",
-    p_fmt_model_1 = "",
-    est_ci_model_2 = "",
-    p_fmt_model_2 = "",
-    sig_model_1 = FALSE,
-    sig_model_2 = FALSE,
+    est_ci = "",
+    p_fmt = "",
+    sig = FALSE,
     row_type = "platform"
   )
 
@@ -144,22 +119,19 @@ table_for_gt <- bind_rows(headers, rows) %>%
       as.character(outcome)
     ),
     across(
-      c(est_ci_model_1, p_fmt_model_1, est_ci_model_2, p_fmt_model_2),
+      c(est_ci, p_fmt),
       ~ ifelse(is.na(.x), "", .x)
     ),
-    across(c(sig_model_1, sig_model_2), ~ ifelse(is.na(.x), FALSE, .x))
+    sig = ifelse(is.na(sig), FALSE, sig)
   ) %>%
   dplyr::select(
     mediator,
     outcome,
     row_type,
     stub,
-    est_ci_model_1,
-    p_fmt_model_1,
-    est_ci_model_2,
-    p_fmt_model_2,
-    sig_model_1,
-    sig_model_2
+    est_ci,
+    p_fmt,
+    sig
   )
 
 #############################################
@@ -167,33 +139,15 @@ table_for_gt <- bind_rows(headers, rows) %>%
 
 table_s24 <- table_for_gt %>%
   gt(rowname_col = "stub") %>%
-  cols_hide(c(mediator, outcome, row_type, sig_model_1, sig_model_2)) %>%
+  cols_hide(c(mediator, outcome, row_type, sig)) %>%
   cols_label(
-    est_ci_model_1 = "ACME [95% CI]",
-    p_fmt_model_1 = md("*p*"),
-    est_ci_model_2 = "ACME [95% CI]",
-    p_fmt_model_2 = md("*p*")
-  ) %>%
-  tab_spanner(
-    label = "Model 1",
-    columns = c(est_ci_model_1, p_fmt_model_1)
-  ) %>%
-  tab_spanner(
-    label = "Model 2",
-    columns = c(est_ci_model_2, p_fmt_model_2)
+    est_ci = "ACME [95% CI]",
+    p_fmt = md("*p*")
   ) %>%
   cols_align("center") %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(est_ci_model_1, p_fmt_model_1), rows = sig_model_1)
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(est_ci_model_2, p_fmt_model_2), rows = sig_model_2)
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_spanners(spanners = c("Model 1", "Model 2"))
+    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
   ) %>%
   tab_style(
     style = cell_text(align = "left"),
@@ -210,8 +164,8 @@ table_s24 <- table_for_gt %>%
   tab_options(
     table.font.size = px(22),
     table.font.names = "Helvetica, Arial",
-    data_row.padding = px(2),
-    table.width = pct(62),
+    data_row.padding = px(3),
+    table.width = pct(52),
     heading.border.bottom.style = "solid",
     column_labels.border.top.style = "solid",
     column_labels.border.bottom.style = "solid",
@@ -230,4 +184,4 @@ if (!requireNamespace("webshot2", quietly = TRUE)) {
   stop("The webshot2 package is required to save gt tables as PNG files.")
 }
 
-gtsave(table_s24, "Plots/tables_s24.png", vwidth = 2600)
+gtsave(table_s24, "Plots/tables_s24.png", vwidth = 2200)

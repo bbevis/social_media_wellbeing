@@ -13,7 +13,7 @@ library(magick)
 #############################################
 # Load data
 
-anes_res <- read.csv("anes_w3_mediation_results.csv")
+path_a_res <- read.csv("anes_w3_path_a_results.csv")
 
 #############################################
 # Format helpers
@@ -55,11 +55,7 @@ mediator_order <- c(
   "YouTube"
 )
 
-table_df <- anes_res %>%
-  filter(
-    sample == "all",
-    model_type == "mediation"
-  ) %>%
+table_df <- path_a_res %>%
   mutate(
     mediator = dplyr::recode(
       mediator,
@@ -72,17 +68,9 @@ table_df <- anes_res %>%
       "total_platform_frequency" = "Social Media"
     )
   ) %>%
-  group_by(mediator) %>%
-  summarise(
-    est = mean(a_path_est, na.rm = TRUE),
-    low = mean(a_path_ci_low, na.rm = TRUE),
-    high = mean(a_path_ci_high, na.rm = TRUE),
-    p = mean(a_path_p, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
   mutate(
     mediator = factor(mediator, levels = mediator_order),
-    est_ci = format_est_ci(est, low, high),
+    est_ci = format_est_ci(estimate, ci_low, ci_high),
     p_fmt = format_p(p),
     sig = p <= 0.05
   ) %>%
@@ -107,6 +95,10 @@ table_s22 <- table_df %>%
   tab_style(
     style = cell_text(align = "left", indent = px(20)),
     locations = cells_stub()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub(rows = mediator == "Social Media")
   ) %>%
   tab_options(
     table.font.size = px(23),

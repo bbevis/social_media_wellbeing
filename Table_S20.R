@@ -2,15 +2,20 @@ library(dplyr)
 library(gt)
 library(tidyr)
 library(purrr)
-library(psych)
 library(webshot2)
 library(chromote)
+library(survey)
 
 #############################################
 #       Table S20
 #       ANES descriptive statistics: wellbeing
 
 anes_w3 <- read.csv("anes_w3.csv")
+anes_design <- svydesign(
+  ids = ~1,
+  weights = ~w3weight,
+  data = anes_w3 %>% filter(!is.na(w3weight))
+)
 
 #############################################
 # Define variables
@@ -21,36 +26,24 @@ symptom_outcomes <- c(
   "depression"
 )
 
-affective_items <- c(
-  "happy",
-  "hopeful",
-  "afraid",
-  "angry",
-  "outraged",
-  "worried"
-)
-
-wellbeing_outcomes <- c(
-  "affective_wellbeing",
-  symptom_outcomes,
-  affective_items
-)
+wellbeing_outcomes <- symptom_outcomes
 
 outcome_labels <- c(
   "loneliness" = "Loneliness (r)",
   "anhedonia" = "Anhedonia (r)",
-  "depression" = "Depression (r)",
-  "affective_wellbeing" = "Affective Wellbeing",
-  "happy" = "Happy",
-  "hopeful" = "Hopeful",
-  "afraid" = "Afraid (r)",
-  "angry" = "Angry (r)",
-  "outraged" = "Outraged (r)",
-  "worried" = "Worried (r)"
+  "depression" = "Depression (r)"
 )
 
 #############################################
 # Descriptive statistics
+
+svy_mean_var <- function(var) {
+  as.numeric(coef(svymean(as.formula(paste0("~", var)), anes_design, na.rm = TRUE)))
+}
+
+svy_sd_var <- function(var) {
+  sqrt(as.numeric(coef(svyvar(as.formula(paste0("~", var)), anes_design, na.rm = TRUE))))
+}
 
 anes_wellbeing_desc <- map_dfr(wellbeing_outcomes, function(v) {
   anes_w3 %>%
@@ -58,23 +51,12 @@ anes_wellbeing_desc <- map_dfr(wellbeing_outcomes, function(v) {
       Variable = outcome_labels[[v]],
       `N Participants` = n_distinct(caseid[!is.na(.data[[v]])]),
       `N Observations` = sum(!is.na(.data[[v]])),
-      Mean = mean(.data[[v]], na.rm = TRUE),
-      SD = sd(.data[[v]], na.rm = TRUE),
+      Mean = svy_mean_var(v),
+      SD = svy_sd_var(v),
       Min = suppressWarnings(min(.data[[v]], na.rm = TRUE)),
       Max = suppressWarnings(max(.data[[v]], na.rm = TRUE))
     )
 })
-
-#############################################
-# Internal consistency for Affective Wellbeing
-
-overall_wellbeing_alpha <- psych::alpha(
-  anes_w3 %>% select(all_of(affective_items)),
-  check.keys = FALSE,
-  warnings = FALSE
-)
-
-overall_wellbeing_alpha_value <- overall_wellbeing_alpha$total$raw_alpha
 
 #############################################
 # Save and print
@@ -89,16 +71,9 @@ write.csv(
 # Create gt table
 
 outcome_order <- c(
-  "Affective Wellbeing",
   "Loneliness (r)",
   "Anhedonia (r)",
-  "Depression (r)",
-  "Happy",
-  "Hopeful",
-  "Afraid (r)",
-  "Angry (r)",
-  "Outraged (r)",
-  "Worried (r)"
+  "Depression (r)"
 )
 
 table_df <- anes_wellbeing_desc %>%
@@ -158,9 +133,3 @@ gtsave(
 )
 
 print(anes_wellbeing_desc)
-
-cat(
-  "\nAffective Wellbeing Cronbach's alpha:",
-  round(overall_wellbeing_alpha_value, 3),
-  "\n"
-)

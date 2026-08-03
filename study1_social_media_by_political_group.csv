@@ -1,0 +1,52 @@
+"Level","Variable","Political group","N participants","Mean","SD"
+"Momentary","Social Media Time","Liberal",609,6.7,6.23
+"Momentary","Social Media Time","Moderate",967,5.62,5.9
+"Momentary","Social Media Time","Conservative",55,4.82,5.8
+"Weekly","Overall Social Media Use","Liberal",507,19.86,12.18
+"Weekly","Overall Social Media Use","Moderate",756,16.66,11.18
+"Weekly","Overall Social Media Use","Conservative",40,19.19,14.91
+"Weekly","Facebook","Liberal",332,0.66,1.2
+"Weekly","Facebook","Moderate",510,0.8,1.8
+"Weekly","Facebook","Conservative",24,1.29,2.55
+"Weekly","Instagram","Liberal",478,3.76,3.93
+"Weekly","Instagram","Moderate",694,4.18,3.64
+"Weekly","Instagram","Conservative",37,5.51,6.25
+"Weekly","Reddit","Liberal",164,1.08,2.37
+"Weekly","Reddit","Moderate",230,1.24,2.95
+"Weekly","Reddit","Conservative",13,0.47,0.88
+"Weekly","Snapchat","Liberal",444,3.71,4.26
+"Weekly","Snapchat","Moderate",620,3.54,3.76
+"Weekly","Snapchat","Conservative",31,4.47,3.72
+"Weekly","TikTok","Liberal",403,9.44,7.83
+"Weekly","TikTok","Moderate",533,6.76,6.14
+"Weekly","TikTok","Conservative",22,7.18,8.18
+"Weekly","Twitter","Liberal",376,2.8,3.64
+"Weekly","Twitter","Moderate",486,1.69,3.04
+"Weekly","Twitter","Conservative",20,2.23,4.76
+"Weekly","YouTube","Liberal",459,3.62,6.04
+"Weekly","YouTube","Moderate",657,4.19,6.88
+"Weekly","YouTube","Conservative",33,6.22,7.9
+"Monthly","Overall Social Media Use","Liberal",384,21.05,12.43
+"Monthly","Overall Social Media Use","Moderate",565,17.23,10.53
+"Monthly","Overall Social Media Use","Conservative",29,19.84,15.92
+"Monthly","Facebook","Liberal",251,0.67,1.16
+"Monthly","Facebook","Moderate",392,0.77,1.63
+"Monthly","Facebook","Conservative",20,1.01,2.36
+"Monthly","Instagram","Liberal",359,3.73,3.96
+"Monthly","Instagram","Moderate",521,4.14,3.58
+"Monthly","Instagram","Conservative",26,5.5,6.9
+"Monthly","Reddit","Liberal",123,1.06,2.27
+"Monthly","Reddit","Moderate",171,1.23,2.91
+"Monthly","Reddit","Conservative",9,0.48,1
+"Monthly","Snapchat","Liberal",354,3.63,4.31
+"Monthly","Snapchat","Moderate",510,3.5,3.66
+"Monthly","Snapchat","Conservative",25,4.52,3.75
+"Monthly","TikTok","Liberal",303,9.7,7.93
+"Monthly","TikTok","Moderate",392,6.79,5.81
+"Monthly","TikTok","Conservative",15,6.19,6.19
+"Monthly","Twitter","Liberal",293,2.96,3.65
+"Monthly","Twitter","Moderate",359,1.64,3.05
+"Monthly","Twitter","Conservative",16,2.07,5.24
+"Monthly","YouTube","Liberal",356,3.81,6.57
+"Monthly","YouTube","Moderate",489,4.14,6.45
+"Monthly","YouTube","Conservative",23,7.35,9.13

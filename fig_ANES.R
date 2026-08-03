@@ -32,29 +32,15 @@ mediator_order <- c(
 outcome_labels <- c(
   "loneliness" = "Loneliness (r)",
   "anhedonia" = "Anhedonia (r)",
-  "depression" = "Depression (r)",
-  "affective_wellbeing" = "Affective Wellbeing",
-  "happy" = "Happy",
-  "hopeful" = "Hopeful",
-  "afraid" = "Afraid (r)",
-  "angry" = "Angry (r)",
-  "outraged" = "Outraged (r)",
-  "worried" = "Worried (r)"
+  "depression" = "Depression (r)"
 )
 
 outcome_order <- unname(outcome_labels)
 
 outcome_shape_vals <- c(
-  "Affective Wellbeing" = 16,
-  "Happy" = 4,
-  "Angry (r)" = 3,
-  "Worried (r)" = 9,
-  "Loneliness (r)" = 6,
+  "Loneliness (r)" = 16,
   "Anhedonia (r)" = 17,
-  "Depression (r)" = 15,
-  "Hopeful" = 5,
-  "Afraid (r)" = 8,
-  "Outraged (r)" = 7
+  "Depression (r)" = 15
 )
 
 #############################################
@@ -64,11 +50,14 @@ fig_df <- anes_res %>%
   filter(
     mediator %in% platforms,
     model_type == "mediation",
-    sample == "all"
+    sample == "all",
+    outcome %in% names(outcome_labels)
   ) %>%
   mutate(
     y_est = b_path_est,
-    sig_acme = !(acme_ci_low < 0 & acme_ci_high > 0) &
+    sig_mediation = a_path_p <= 0.05 &
+      b_path_p <= 0.05 &
+      (acme_ci_low > 0 | acme_ci_high < 0) &
       is.finite(acme_ci_low) &
       is.finite(acme_ci_high),
     outcome = dplyr::recode(outcome, !!!outcome_labels),
@@ -82,7 +71,7 @@ fig_df <- anes_res %>%
       "twitter_frequency" = "Twitter",
       "total_platform_frequency" = "Social Media"
     ),
-    color_var = if_else(sig_acme, mediator, "n.s.")
+    color_var = if_else(sig_mediation, mediator, "n.s.")
   ) %>%
   filter(is.finite(a_path_est), is.finite(y_est), is.finite(prop_mediated_est)) %>%
   mutate(

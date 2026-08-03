@@ -1,6 +1,7 @@
 library(dplyr)
 library(tidyr)
 library(purrr)
+library(survey)
 
 #############################################
 #
@@ -61,8 +62,29 @@ pct <- function(x, denominator) {
   round(100 * x / denominator, 1)
 }
 
+svy_mean_var <- function(df, var) {
+  df <- df %>% filter(!is.na(w3weight))
+  design <- svydesign(ids = ~1, weights = ~w3weight, data = df)
+  as.numeric(coef(svymean(as.formula(paste0("~", var)), design, na.rm = TRUE)))
+}
+
+svy_sd_var <- function(df, var) {
+  df <- df %>% filter(!is.na(w3weight))
+  design <- svydesign(ids = ~1, weights = ~w3weight, data = df)
+  sqrt(as.numeric(coef(svyvar(as.formula(paste0("~", var)), design, na.rm = TRUE))))
+}
+
 format_category_table <- function(df, var, labels, sample_label) {
-  denominator <- sum(!is.na(df[[var]]))
+  design_df <- df %>%
+    filter(!is.na(w3weight)) %>%
+    mutate(category_var = .data[[var]])
+  design <- svydesign(ids = ~1, weights = ~w3weight, data = design_df)
+  percent_df <- svymean(~factor(category_var), design, na.rm = TRUE) %>%
+    coef() %>%
+    {\(x) tibble(
+      category_value = sub("^factor\\(category_var\\)", "", names(x)),
+      percent = round(100 * as.numeric(x), 1)
+    )}()
 
   df %>%
     count(.data[[var]], name = "n") %>%
@@ -70,9 +92,10 @@ format_category_table <- function(df, var, labels, sample_label) {
     mutate(
       sample = sample_label,
       variable = var,
-      category = recode(as.character(.data[[var]]), !!!labels),
-      percent = pct(n, denominator)
+      category_value = as.character(.data[[var]]),
+      category = recode(category_value, !!!labels)
     ) %>%
+    left_join(percent_df, by = "category_value") %>%
     select(sample, variable, category, n, percent)
 }
 
@@ -81,23 +104,24 @@ describe_sample <- function(df, sample_label) {
     sample = sample_label,
     n = nrow(df),
     n_unique_caseid = n_distinct(df$caseid),
-    age_mean = mean(df$age, na.rm = TRUE),
-    age_sd = sd(df$age, na.rm = TRUE),
+    age_mean = svy_mean_var(df, "age"),
+    age_sd = svy_sd_var(df, "age"),
     age_min = min(df$age, na.rm = TRUE),
     age_max = max(df$age, na.rm = TRUE),
     n_young_adult = sum(df$young_adult == 1, na.rm = TRUE),
-    pct_young_adult = pct(n_young_adult, sum(!is.na(df$young_adult))),
+    pct_young_adult = round(100 * svy_mean_var(df, "young_adult"), 1),
     n_valid_political_orientation = sum(!is.na(df$political_orientation)),
-    political_orientation_mean = mean(df$political_orientation, na.rm = TRUE),
-    political_orientation_sd = sd(df$political_orientation, na.rm = TRUE)
+    political_orientation_mean = svy_mean_var(df, "political_orientation"),
+    political_orientation_sd = svy_sd_var(df, "political_orientation")
   )
 }
 
 #############################################
 # Samples
 
-all_w3 <- anes_w3
-valid_political_orientation <- anes_w3 %>%
+all_w3 <- anes_w3 %>%
+  filter(!is.na(w3weight))
+valid_political_orientation <- all_w3 %>%
   filter(!is.na(political_orientation))
 
 #############################################

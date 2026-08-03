@@ -45,9 +45,9 @@ mediator_order <- c(
   "Instagram",
   "Reddit",
   "Snapchat",
-  "Tiktok",
+  "TikTok",
   "Twitter",
-  "Youtube"
+  "YouTube"
   # " ",
   # "Overall Screentime",
   # "Creativity",
@@ -90,6 +90,7 @@ base_df <- bind_rows(
       "social" = "Social"
     ),
     mediator = tools::toTitleCase(mediator),
+    mediator = recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube"),
     outcome = recode(
       outcome,
       "awb_momentary" = "Affective Wellbeing",
