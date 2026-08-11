@@ -8,6 +8,7 @@ library(dplyr)
 library(ggplot2)
 library(ggstance)
 library(gt)
+source("supplementary_table_style.R")
 library(tidyr)
 library(webshot2)
 
@@ -116,7 +117,6 @@ h2_gt <- h2_for_gt %>%
                              (mediator == "Social Media" & level != "Momentary"))
   ) %>%
   tab_options(
-    table.font.names          = "Helvetica, Arial, sans-serif",
     table.border.top.style    = "none",
     table.border.bottom.style = "none",
     data_row.padding          = px(4),
@@ -140,8 +140,9 @@ h2_gt <- h2_for_gt %>%
   tab_style(
     style = cell_text(indent = px(20)),
     locations = cells_stub()
-  )
+  ) %>%
+  apply_supplementary_table_style()
 
 h2_gt
 
-gtsave(h2_gt, "Plots/tables_s2.png")
+gtsave(h2_gt, "Plots/tables_s2.png", vwidth = SUPPLEMENTARY_TABLE_VWIDTH, vheight = 0)

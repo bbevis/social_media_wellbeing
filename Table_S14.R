@@ -8,6 +8,7 @@ library(dplyr)
 library(ggplot2)
 library(ggstance)
 library(gt)
+source("supplementary_table_style.R")
 library(tidyr)
 library(webshot2)
 
@@ -106,7 +107,6 @@ h1_gt <- h1_for_gt %>%
     locations = cells_row_groups(groups = c("Momentary", "Weekly", "Monthly"))
   ) %>%
   tab_options(
-    table.font.names          = "Helvetica, Arial, sans-serif",
     table.border.top.style    = "none",
     table.border.bottom.style = "none",
     data_row.padding          = px(4),
@@ -136,8 +136,9 @@ h1_gt <- h1_for_gt %>%
     locations = cells_stub(
       rows = outcome == "Affective Wellbeing"
     )
-  )
+  ) %>%
+  apply_supplementary_table_style()
 
 h1_gt
 
-gtsave(h1_gt, "Plots/tables_s14.png")
+gtsave(h1_gt, "Plots/tables_s14.png", vwidth = SUPPLEMENTARY_TABLE_VWIDTH, vheight = 0)

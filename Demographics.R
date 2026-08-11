@@ -3,11 +3,22 @@ library(dplyr)
 DEMOGRAPHIC_LEVELS <- list(
   gender = c("male", "female", "other"),
   ses = c("lower", "lower middle", "middle", "upper middle", "upper"),
-  smartphone = c("iPhone", "Android", "Other")
+  smartphone = c("iPhone", "Android", "Non-iOS/Android")
 )
 
-distinct_ids <- function(df) {
-  as.character(df$id)
+completed_ids <- function(df) {
+  answered <- rowSums(!is.na(df[setdiff(names(df), "id")])) > 0
+  unique(as.character(df$id[answered]))
+}
+
+platform_duration_ids <- function(df) {
+  vars <- grep("^(hours|minutes)_(facebook|twitter|tiktok|instagram|youtube|reddit|snapchat)_w[1-4]$", names(df), value = TRUE)
+  unique(as.character(df$id[rowSums(!is.na(df[vars])) > 0]))
+}
+
+term_ids <- function(fall, spring, extract) {
+  ids <- list(fall = extract(fall), spring = extract(spring))
+  c(ids, list(total = union(ids$fall, ids$spring)))
 }
 
 pct_of <- function(numerator, denominator) {
@@ -38,11 +49,6 @@ ethnicity_indicators <- function(x) {
     ethnicity_pacific_islander = has_ethnicity_code(x, "6"),
     ethnicity_other = has_ethnicity_code(x, "7")
   )
-}
-
-ethnicity_metric_row <- function(df, var) {
-  col <- paste0("ethnicity_", var)
-  metric_row(paste0("ema_pct_", var), multi_select_pct(df[[col]]))
 }
 
 smartphone_pct <- function(df, level) {
@@ -102,9 +108,20 @@ demo_spring <- read.csv("Data/demographics_spring_anonymized.csv") %>%
 # Core ID sets
 # -----------------------------------------------------------------------------
 
-ema_ids <- union(distinct_ids(ema_1), distinct_ids(ema_2))
-app_ids <- union(distinct_ids(app_1), distinct_ids(app_2))
-behavior_ids <- union(ema_ids, app_ids)
+demographics_completed <- term_ids(
+  demo_fall, demo_spring,
+  function(df) unique(as.character(df$pID[df$Finished == 1]))
+)
+ema_completed <- term_ids(ema_1, ema_2, completed_ids)
+app_response <- term_ids(app_1, app_2, completed_ids)
+app_platform_duration <- term_ids(app_1, app_2, platform_duration_ids)
+post_completed <- term_ids(post_1, post_2, completed_ids)
+
+ema_ids <- ema_completed$total
+analysis_ids <- intersect(
+  demographics_completed$total,
+  union(ema_completed$total, app_platform_duration$total)
+)
 
 ema_counts <- bind_rows(ema_1, ema_2) %>%
   count(id, name = "num_ema_completed")
@@ -152,7 +169,18 @@ demographics_df <- bind_rows(demo_fall, demo_spring) %>%
     smartphone = case_when(
       Q26 == "1" ~ "iPhone",
       Q26 == "2" ~ "Android",
-      TRUE ~ "Other"
+      Q26 %in% c("3", "4", "5", "6") ~ "Non-iOS/Android",
+      TRUE ~ NA_character_
+    ),
+    political_orientation = if_else(Q12 %in% as.character(1:7), 8 - as.numeric(Q12), NA_real_),
+    political_group = factor(
+      case_when(
+        political_orientation %in% 1:3 ~ "Liberal",
+        political_orientation == 4 ~ "Moderate",
+        political_orientation %in% 5:7 ~ "Conservative",
+        TRUE ~ NA_character_
+      ),
+      levels = c("Liberal", "Moderate", "Conservative")
     ),
     major = coalesce(
       na_if(as.character(Q46_5_TEXT), ""),
@@ -160,8 +188,7 @@ demographics_df <- bind_rows(demo_fall, demo_spring) %>%
     )
   )
 
-ema_demo <- demographics_df %>% filter(id %in% ema_ids)
-behavior_demo <- demographics_df %>% filter(id %in% behavior_ids)
+analysis_demo <- demographics_df %>% filter(id %in% analysis_ids)
 
 
 # -----------------------------------------------------------------------------
@@ -170,35 +197,9 @@ behavior_demo <- demographics_df %>% filter(id %in% behavior_ids)
 
 post_ids <- unique(as.character(c(post_1$id, post_2$id)))
 
-post_df <- bind_rows(
-  demo_fall %>%
-    transmute(
-      id = as.character(pID),
-      term = "Fall 2020",
-      Q12_num = suppressWarnings(as.numeric(Q12)),
-      political_orientation = if_else(Q12_num %in% 1:7, 8 - Q12_num, NA_real_)
-    ),
-  demo_spring %>%
-    transmute(
-      id = as.character(pID),
-      term = "Spring 2021",
-      Q12_num = suppressWarnings(as.numeric(Q12)),
-      political_orientation = if_else(Q12_num %in% 1:7, 8 - Q12_num, NA_real_)
-    )
-) %>%
+post_df <- demographics_df %>%
   filter(id %in% post_ids) %>%
-  mutate(
-    with_ema = id %in% ema_ids,
-    political_group = factor(
-      case_when(
-        political_orientation %in% 1:2 ~ "Liberal",
-        political_orientation %in% 3:5 ~ "Moderate",
-        political_orientation %in% 6:7 ~ "Conservative",
-        TRUE ~ NA_character_
-      ),
-      levels = c("Liberal", "Moderate", "Conservative")
-    )
-  )
+  mutate(with_ema = id %in% ema_ids)
 
 post_po <- post_df %>% filter(!is.na(political_orientation))
 
@@ -208,41 +209,48 @@ post_po <- post_df %>% filter(!is.na(political_orientation))
 # -----------------------------------------------------------------------------
 
 sample_description <- bind_rows(
-  metric_row("pre_total", n_distinct(c(pre_1$id, pre_2$id))),
-  metric_row("pre_fall", n_distinct(pre_1$id)),
-  metric_row("pre_spring", n_distinct(pre_2$id)),
-  metric_row("ema_total", n_distinct(ema_ids)),
-  metric_row("ema_fall", n_distinct(ema_1$id)),
-  metric_row("ema_spring", n_distinct(ema_2$id)),
-  metric_row("post_total", n_distinct(c(post_1$id, post_2$id))),
-  metric_row("post_fall", n_distinct(post_1$id)),
-  metric_row("post_spring", n_distinct(post_2$id)),
+  metric_row("demographics_total", length(demographics_completed$total)),
+  metric_row("demographics_fall", length(demographics_completed$fall)),
+  metric_row("demographics_spring", length(demographics_completed$spring)),
+  metric_row("ema_total", length(ema_completed$total)),
+  metric_row("ema_fall", length(ema_completed$fall)),
+  metric_row("ema_spring", length(ema_completed$spring)),
+  metric_row("app_response_total", length(app_response$total)),
+  metric_row("app_response_fall", length(app_response$fall)),
+  metric_row("app_response_spring", length(app_response$spring)),
+  metric_row("app_platform_duration_total", length(app_platform_duration$total)),
+  metric_row("app_platform_duration_fall", length(app_platform_duration$fall)),
+  metric_row("app_platform_duration_spring", length(app_platform_duration$spring)),
+  metric_row("post_total", length(post_completed$total)),
+  metric_row("post_fall", length(post_completed$fall)),
+  metric_row("post_spring", length(post_completed$spring)),
   metric_row("post_political_orientation_total", nrow(post_po)),
-  metric_row("ema_age_mean", round(mean(ema_demo$age, na.rm = TRUE), 2)),
-  metric_row("ema_age_sd", round(sd(ema_demo$age, na.rm = TRUE), 2)),
-  metric_row("ema_pct_male", gender_pct(ema_demo, "male")),
-  metric_row("ema_pct_female", gender_pct(ema_demo, "female")),
-  metric_row("ema_pct_other_gender", gender_pct(ema_demo, "other")),
-  metric_row("ema_pct_lower", ses_pct(ema_demo, "lower")),
-  metric_row("ema_pct_lower_middle", ses_pct(ema_demo, "lower middle")),
-  metric_row("ema_pct_middle", ses_pct(ema_demo, "middle")),
-  metric_row("ema_pct_upper_middle", ses_pct(ema_demo, "upper middle")),
-  metric_row("ema_pct_upper", ses_pct(ema_demo, "upper")),
-  metric_row("ema_pct_african_american_black", multi_select_pct(ema_demo$ethnicity_african_american_black)),
-  metric_row("ema_pct_asian_asian_american", multi_select_pct(ema_demo$ethnicity_asian_asian_american)),
-  metric_row("ema_pct_hispanic_latino", multi_select_pct(ema_demo$ethnicity_hispanic_latino)),
-  metric_row("ema_pct_anglo_white", multi_select_pct(ema_demo$ethnicity_anglo_white)),
-  metric_row("ema_pct_native_american", multi_select_pct(ema_demo$ethnicity_native_american)),
-  metric_row("ema_pct_pacific_islander", multi_select_pct(ema_demo$ethnicity_pacific_islander)),
-  metric_row("ema_pct_other_ethnicity", multi_select_pct(ema_demo$ethnicity_other)),
-  metric_row("smartphone_pct_iphone", smartphone_pct(behavior_demo, "iPhone")),
-  metric_row("smartphone_pct_android", smartphone_pct(behavior_demo, "Android")),
-  metric_row("smartphone_pct_other", smartphone_pct(behavior_demo, "Other")),
+  metric_row("analysis_total", nrow(analysis_demo)),
+  metric_row("analysis_age_mean", round(mean(analysis_demo$age, na.rm = TRUE), 2)),
+  metric_row("analysis_age_sd", round(sd(analysis_demo$age, na.rm = TRUE), 2)),
+  metric_row("analysis_pct_male", gender_pct(analysis_demo, "male")),
+  metric_row("analysis_pct_female", gender_pct(analysis_demo, "female")),
+  metric_row("analysis_pct_other_gender", gender_pct(analysis_demo, "other")),
+  metric_row("analysis_pct_lower", ses_pct(analysis_demo, "lower")),
+  metric_row("analysis_pct_lower_middle", ses_pct(analysis_demo, "lower middle")),
+  metric_row("analysis_pct_middle", ses_pct(analysis_demo, "middle")),
+  metric_row("analysis_pct_upper_middle", ses_pct(analysis_demo, "upper middle")),
+  metric_row("analysis_pct_upper", ses_pct(analysis_demo, "upper")),
+  metric_row("analysis_pct_african_american_black", multi_select_pct(analysis_demo$ethnicity_african_american_black)),
+  metric_row("analysis_pct_asian_asian_american", multi_select_pct(analysis_demo$ethnicity_asian_asian_american)),
+  metric_row("analysis_pct_hispanic_latino", multi_select_pct(analysis_demo$ethnicity_hispanic_latino)),
+  metric_row("analysis_pct_anglo_white", multi_select_pct(analysis_demo$ethnicity_anglo_white)),
+  metric_row("analysis_pct_native_american", multi_select_pct(analysis_demo$ethnicity_native_american)),
+  metric_row("analysis_pct_pacific_islander", multi_select_pct(analysis_demo$ethnicity_pacific_islander)),
+  metric_row("analysis_pct_other_ethnicity", multi_select_pct(analysis_demo$ethnicity_other)),
+  metric_row("smartphone_pct_iphone", smartphone_pct(analysis_demo, "iPhone")),
+  metric_row("smartphone_pct_android", smartphone_pct(analysis_demo, "Android")),
+  metric_row("smartphone_pct_non_ios_android", smartphone_pct(analysis_demo, "Non-iOS/Android")),
   metric_row("ema_reports_per_participant_mean", round(mean(ema_counts$num_ema_completed, na.rm = TRUE), 2)),
   metric_row("ema_reports_per_participant_sd", round(sd(ema_counts$num_ema_completed, na.rm = TRUE), 2)),
   metric_row("appusage_reports_per_participant_mean", round(mean(appusage_counts$n_appusage_surveys_completed, na.rm = TRUE), 2)),
   metric_row("appusage_reports_per_participant_sd", round(sd(appusage_counts$n_appusage_surveys_completed, na.rm = TRUE), 2)),
-  metric_row("n_unique_reported_majors", n_distinct(na.omit(trimws(ema_demo$major))))
+  metric_row("n_unique_reported_majors", n_distinct(na.omit(trimws(analysis_demo$major))))
 )
 
 
@@ -302,7 +310,8 @@ po_summary <- bind_rows(
     transmute(metric, value = percent)
 )
 
-political_group_summary <- post_po %>%
+political_group_summary <- analysis_demo %>%
+  filter(!is.na(political_group)) %>%
   count(political_group) %>%
   mutate(percent = round(100 * n / sum(n), 1))
 

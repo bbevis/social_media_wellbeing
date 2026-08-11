@@ -6,6 +6,8 @@ library(webshot2)
 library(chromote)
 library(survey)
 
+source("supplementary_table_style.R")
+
 #############################################
 #       Table S20
 #       ANES descriptive statistics: wellbeing
@@ -98,37 +100,18 @@ tbl_anes_outcomes <- table_df %>%
   ) %>%
   fmt_number(columns = c("Mean", "SD", "Min", "Max"), decimals = 2) %>%
   fmt_number(columns = c("N Participants", "N Observations"), decimals = 0, use_seps = TRUE) %>%
-  tab_style(
-    style = cell_text(size = px(18)),
-    locations = cells_body()
-  ) %>%
   cols_align(align = "center", columns = everything()) %>%
   cols_align(align = "left", columns = "Variable") %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_column_labels(everything())
   ) %>%
-  tab_options(
-    table.font.names = "Helvetica, Arial, sans-serif",
-    heading.align = "left",
-    data_row.padding = px(4),
-    table.width = pct(50),
-    table.border.top.style = "solid",
-    table.border.bottom.style = "solid",
-    table.border.left.style = "none",
-    table.border.right.style = "none",
-    row_group.border.top.style = "none",
-    row_group.border.bottom.style = "none",
-    table_body.hlines.style = "none",
-    table_body.hlines.color = "transparent",
-    column_labels.border.top.style = "none",
-    column_labels.border.bottom.style = "solid"
-  )
+  apply_supplementary_table_style()
 
 gtsave(
   tbl_anes_outcomes,
   "Plots/tables_s20.png",
-  vwidth = 1600,
+  vwidth = SUPPLEMENTARY_TABLE_VWIDTH,
   vheight = 0
 )
 

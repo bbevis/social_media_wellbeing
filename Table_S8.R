@@ -6,6 +6,7 @@ library(dplyr)
 library(lme4)
 library(stringr)
 library(gt)
+source("supplementary_table_style.R")
 library(tidyr)
 
 # Load data
@@ -241,7 +242,6 @@ gt_table <- sm_wide %>%
   ) %>%
   fmt_markdown(columns = c(p_val_Lag1, p_val_Lag2, p_val_Lag3)) %>%
   tab_options(
-    table.font.names = "Helvetica, Arial, sans-serif",
     data_row.padding = px(4),
     table.width = pct(72),
     table.border.top.style = "solid",
@@ -256,9 +256,10 @@ gt_table <- sm_wide %>%
     table_body.vlines.style = "none",
     stub.border.style = "none",
     row.striping.background_color = NULL
-  )
+  ) %>%
+  apply_supplementary_table_style(table_width = pct(95))
 
 
 gt_table
 
-gtsave(gt_table, "Plots/tables_s8.png", vwidth = 1300)
+gtsave(gt_table, "Plots/tables_s8.png", vwidth = 2000)

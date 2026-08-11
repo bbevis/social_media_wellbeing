@@ -16,5 +16,6 @@ if (!requireNamespace("webshot2", quietly = TRUE)) {
 gtsave(
   table_s26,
   "Plots/tables_s26.png",
-  vwidth = 2800
+  vwidth = SUPPLEMENTARY_TABLE_VWIDTH,
+  vheight = 0
 )

@@ -305,9 +305,9 @@ make_grouped_desc <- function(df, level_label, vars, row_filter_col = NULL) {
     mutate(
       Political_group = factor(
         case_when(
-          political_orientation %in% 1:2 ~ "Liberal",
-          political_orientation %in% 3:5 ~ "Moderate",
-          political_orientation %in% 6:7 ~ "Conservative",
+          political_orientation %in% 1:3 ~ "Liberal",
+          political_orientation == 4 ~ "Moderate",
+          political_orientation %in% 5:7 ~ "Conservative",
           TRUE ~ NA_character_
         ),
         levels = c("Liberal", "Moderate", "Conservative")

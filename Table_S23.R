@@ -10,6 +10,8 @@ library(tidyr)
 library(gt)
 library(magick)
 
+source("supplementary_table_style.R")
+
 #############################################
 # Load data
 
@@ -161,21 +163,7 @@ table_s23 <- table_for_gt %>%
     style = cell_text(indent = px(40)),
     locations = cells_stub(rows = row_type == "outcome")
   ) %>%
-  tab_options(
-    table.font.size = px(22),
-    table.font.names = "Helvetica, Arial",
-    data_row.padding = px(3),
-    table.width = pct(52),
-    heading.border.bottom.style = "solid",
-    column_labels.border.top.style = "solid",
-    column_labels.border.bottom.style = "solid",
-    table.border.top.style = "none",
-    table.border.bottom.style = "none",
-    table_body.hlines.style = "none",
-    table_body.vlines.style = "none",
-    stub.border.style = "none",
-    column_labels.padding = px(3)
-  )
+  apply_supplementary_table_style()
 
 #############################################
 # Save table
@@ -184,4 +172,9 @@ if (!requireNamespace("webshot2", quietly = TRUE)) {
   stop("The webshot2 package is required to save gt tables as PNG files.")
 }
 
-gtsave(table_s23, "Plots/tables_s23.png", vwidth = 2200)
+gtsave(
+  table_s23,
+  "Plots/tables_s23.png",
+  vwidth = SUPPLEMENTARY_TABLE_VWIDTH,
+  vheight = 0
+)

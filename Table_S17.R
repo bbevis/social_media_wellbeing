@@ -8,6 +8,7 @@
 
 library(dplyr)
 library(gt)
+source("supplementary_table_style.R")
 library(tidyr)
 library(webshot2)
 library(magick)
@@ -185,7 +186,6 @@ make_h4_table <- function(df_input) {
     ) %>%
     tab_options(
       table.font.size = px(25),
-      table.font.names = "Helvetica, Arial",
       data_row.padding = px(4),
       table.width = pct(45),
       heading.border.bottom.style = "solid",
@@ -196,7 +196,8 @@ make_h4_table <- function(df_input) {
       table_body.hlines.style = "none",
       table_body.vlines.style = "none",
       stub.border.style = "none"
-    )
+    ) %>%
+    apply_supplementary_table_style(table_width = pct(45))
 }
 
 #############################################
@@ -211,9 +212,9 @@ h4_gt_middle <- make_h4_table(h4_middle) %>%
 h4_gt_right <- make_h4_table(h4_right) %>%
   tab_header(title = md("**C. Reverse-Coded Single-Item Measures**"))
 
-gtsave(h4_gt_left, "Plots/table_s17_A.png", vwidth = 2400)
-gtsave(h4_gt_middle, "Plots/table_s17_B.png", vwidth = 2400)
-gtsave(h4_gt_right, "Plots/table_s17_C.png", vwidth = 2400)
+gtsave(h4_gt_left, "Plots/table_s17_A.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
+gtsave(h4_gt_middle, "Plots/table_s17_B.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
+gtsave(h4_gt_right, "Plots/table_s17_C.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
 
 img_A <- image_read("Plots/table_s17_A.png")
 img_B <- image_read("Plots/table_s17_B.png")

@@ -8,6 +8,7 @@ library(dplyr)
 library(ggplot2)
 library(ggstance)
 library(gt)
+source("supplementary_table_style.R")
 library(tidyr)
 library(webshot2)
 library(magick)
@@ -252,7 +253,6 @@ make_h4_table <- function(df_input) {
     # general table options
     tab_options(
       table.font.size  = px(25),
-      table.font.names = "Helvetica, Arial",
       data_row.padding = px(4),
       table.width      = pct(45),
       heading.border.bottom.style       = "solid",
@@ -265,7 +265,8 @@ make_h4_table <- function(df_input) {
       stub.border.style                 = "none",
       row_group.border.top.style        = "none",
       row_group.border.bottom.style     = "none"
-    )
+    ) %>%
+    apply_supplementary_table_style(table_width = pct(45))
 }
 
 
@@ -284,9 +285,9 @@ h4_gt_right <- make_h4_table(h4_right) %>%
   tab_header(title = md("**C. Reverse-Coded Single-Item Measures**"))
 
 # SAVE TABLES
-gtsave(h4_gt_left,   "Plots/table_h4_A.png", vwidth = 2400)
-gtsave(h4_gt_middle, "Plots/table_h4_B.png", vwidth = 2400)
-gtsave(h4_gt_right,  "Plots/table_h4_C.png", vwidth = 2400)
+gtsave(h4_gt_left,   "Plots/table_h4_A.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
+gtsave(h4_gt_middle, "Plots/table_h4_B.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
+gtsave(h4_gt_right,  "Plots/table_h4_C.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
 
 # COMBINE IMAGES INTO ONE PNG
 img_A <- image_read("Plots/table_h4_A.png")

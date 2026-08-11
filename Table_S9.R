@@ -8,6 +8,7 @@ library(dplyr)
 library(lme4)
 library(tidyr)
 library(gt)
+source("supplementary_table_style.R")
 library(stringr)
 
 # Load data
@@ -226,7 +227,6 @@ gt_table <- wide %>%
   ) %>%
   
   tab_options(
-    table.font.names = "Helvetica, Arial, sans-serif",
     data_row.padding = px(4),
     table.width = pct(72),
     table.border.top.style = "solid",
@@ -241,8 +241,9 @@ gt_table <- wide %>%
     stub.border.style = "none",
     table_body.hlines.style = "none",
     table_body.vlines.style = "none"
-  )
+  ) %>%
+  apply_supplementary_table_style(table_width = pct(95))
 
 gt_table
 
-gtsave(gt_table, "Plots/tables_s9.png", vwidth = 1300)
+gtsave(gt_table, "Plots/tables_s9.png", vwidth = 2000)

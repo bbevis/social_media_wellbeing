@@ -9,6 +9,8 @@ library(dplyr)
 library(tidyr)
 library(gt)
 
+source("supplementary_table_style.R")
+
 #############################################
 # Load data
 
@@ -232,19 +234,19 @@ make_path_table <- function(table_data, predictor_label) {
     ) %>%
     cols_align("center") %>%
     cols_width(
-      stub ~ px(300),
+      stub ~ px(220),
       c(
         est_ci_interaction,
         est_ci_minus_1sd,
         est_ci_mean,
         est_ci_plus_1sd
-      ) ~ px(330),
+      ) ~ px(235),
       c(
         p_fmt_interaction,
         p_fmt_minus_1sd,
         p_fmt_mean,
         p_fmt_plus_1sd
-      ) ~ px(90)
+      ) ~ px(60)
     ) %>%
     tab_style(
       cell_text(weight = "bold"),
@@ -302,24 +304,7 @@ make_path_table <- function(table_data, predictor_label) {
         rows = sig_plus_1sd
       )
     ) %>%
-    tab_options(
-      table.font.size = px(26),
-      table.font.names = "Helvetica, Arial",
-      data_row.padding = px(3),
-      row_group.padding = px(4),
-      table.width = px(1980),
-      heading.border.bottom.style = "solid",
-      column_labels.border.top.style = "none",
-      column_labels.border.bottom.style = "solid",
-      table.border.top.style = "solid",
-      table.border.bottom.style = "none",
-      table_body.hlines.style = "none",
-      table_body.vlines.style = "none",
-      stub.border.style = "none",
-      row_group.border.top.style = "none",
-      row_group.border.bottom.style = "none",
-      column_labels.padding = px(3)
-    )
+    apply_supplementary_table_style()
 }
 
 table_path_a <- table_for_gt %>%
