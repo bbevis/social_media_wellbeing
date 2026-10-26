@@ -9,7 +9,18 @@ library(survey)
 #
 #############################################
 
-anes_w3 <- read.csv("anes_w3.csv")
+anes_w3 <- read.csv("anes_w3.csv") %>%
+  mutate(
+    political_group = factor(
+      case_when(
+        political_orientation %in% 1:3 ~ "Liberal",
+        political_orientation == 4 ~ "Moderate",
+        political_orientation %in% 5:7 ~ "Conservative",
+        TRUE ~ NA_character_
+      ),
+      levels = c("Liberal", "Moderate", "Conservative")
+    )
+  )
 
 #############################################
 # Labels
@@ -53,6 +64,12 @@ income_labels <- c(
   "16" = "$150,000 to $174,999",
   "17" = "$175,000 to $199,999",
   "18" = "$200,000 or more"
+)
+
+political_group_labels <- c(
+  "Liberal" = "Liberal",
+  "Moderate" = "Moderate",
+  "Conservative" = "Conservative"
 )
 
 #############################################
@@ -140,7 +157,8 @@ demographic_breakdown <- bind_rows(
   format_category_table(valid_political_orientation, "gender", gender_labels, "Valid political orientation"),
   format_category_table(valid_political_orientation, "race_ethnicity", race_ethnicity_labels, "Valid political orientation"),
   format_category_table(valid_political_orientation, "education", education_labels, "Valid political orientation"),
-  format_category_table(valid_political_orientation, "income", income_labels, "Valid political orientation")
+  format_category_table(valid_political_orientation, "income", income_labels, "Valid political orientation"),
+  format_category_table(valid_political_orientation, "political_group", political_group_labels, "Valid political orientation")
 )
 
 #############################################

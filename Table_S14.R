@@ -1,98 +1,152 @@
 #############################################
 #
-# H1 results table - Political orientation on Wellbeing
+#       Table S14
+#       Social Media Use and Wellbeing
 #
 #############################################
 
 library(dplyr)
-library(ggplot2)
-library(ggstance)
-library(gt)
-source("supplementary_table_style.R")
 library(tidyr)
-library(webshot2)
+library(gt)
+library(magick)
+
+source("supplementary_table_style.R")
 
 #############################################
 # Load data
 
-monthly_nc = read.csv('monthly_results_nocontrols_authoritarianism.csv')
-weekly_nc = read.csv('weekly_results_nocontrols_authoritarianism.csv')
-momentary_nc = read.csv('momentary_results_nocontrols_authoritarianism.csv')
+anes_res <- read.csv("anes_w3_mediation_results.csv")
 
 #############################################
-# H1 table: combine and summarise
+# Format helpers
 
-h1_df = monthly_nc %>%
-  filter(mediator%in%c('total_activity')) %>%
-  dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-  mutate(level = 'Monthly') %>%
-  bind_rows(
-    weekly_nc %>%
-      filter(mediator%in%c('total_activity')) %>%
-      dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-      mutate(level = 'Weekly')) %>%
-  bind_rows(
-    momentary_nc %>%
-      dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
-      mutate(level = 'Momentary')) %>%
-  group_by(outcome,level) %>%
-  summarise(
-    m   = mean(path_c),
-    lwr = mean(path_c_CI_lower, na.rm = TRUE),
-    upr = mean(path_c_CI_upper, na.rm = TRUE),
-    p   = mean(path_c_p),
-    .groups = "drop"
-  ) %>%
-  mutate(outcome = dplyr::recode(outcome,
-                          "awb_momentary" = "Affective Wellbeing",
-                          "awb_week"      = "Affective Wellbeing",
-                          "awb_t2"        = "Affective Wellbeing",
-                          "swls_t2"       = "Life Satisfaction",
-                          "uls_t2"        = "Lonely (r)",
-                          "angry_rev"         = "Angry (r)",
-                          "worried_rev"       = "Worried (r)",
-                          "happy"         = "Happy",
-                          "sad_rev"           = "Sad (r)",
-                          "stressed_rev"      = "Stressed (r)",
-                          "lonely_rev"        = "Lonely (r)",
-                          "accepted"      = "Accepted"
-  )) %>%
-  # Make "Affective Wellbeing" come first, followed by alphabetical ordering
-  mutate(
-    outcome = factor(
-      outcome,
-      levels = c("Affective Wellbeing", sort(setdiff(unique(outcome), "Affective Wellbeing")))
-    )
+format_decimal <- function(x, digits = 3) {
+  out <- sprintf(paste0("%.", digits, "f"), x)
+  gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", out, perl = TRUE)
+}
+
+format_p <- function(p) {
+  case_when(
+    is.na(p) ~ "",
+    p < .001 ~ "<.001",
+    TRUE ~ format_decimal(p, 3)
   )
-  
-#############################################
-# Prepare data for gt table
+}
 
-h1_for_gt <- h1_df %>%
-  mutate(
-    level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
-    est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
-    p_fmt  = sprintf("%.3f", p), # Format p value
-    sig = p <= 0.05,
-    est_ci = gsub("0\\.", ".", est_ci),
-    p_fmt  = gsub("0\\.", ".", p_fmt)
+format_est_ci <- function(est, low, high) {
+  paste0(
+    format_decimal(est, 3),
+    " [",
+    format_decimal(low, 3),
+    ", ",
+    format_decimal(high, 3),
+    "]"
+  )
+}
+
+#############################################
+# Prepare data
+
+outcome_order <- c(
+  "Loneliness (r)",
+  "Anhedonia (r)",
+  "Depression (r)"
+)
+
+mediator_order <- c(
+  "Social Media",
+  "Facebook",
+  "Instagram",
+  "Reddit",
+  "TikTok",
+  "Twitter",
+  "YouTube"
+)
+
+table_df <- anes_res %>%
+  filter(
+    sample == "all",
+    model_type == "mediation",
+    outcome %in% c("loneliness", "anhedonia", "depression")
   ) %>%
-  dplyr::select(outcome, level, est_ci, p_fmt, sig) %>%
-  arrange(outcome, level)
+  mutate(
+    outcome = dplyr::recode(
+      outcome,
+      "loneliness" = "Loneliness (r)",
+      "anhedonia" = "Anhedonia (r)",
+      "depression" = "Depression (r)"
+    ),
+    mediator = dplyr::recode(
+      mediator,
+      "facebook_frequency" = "Facebook",
+      "instagram_frequency" = "Instagram",
+      "reddit_frequency" = "Reddit",
+      "tiktok_frequency" = "TikTok",
+      "youtube_frequency" = "YouTube",
+      "twitter_frequency" = "Twitter",
+      "total_platform_frequency" = "Social Media"
+    ),
+    outcome = factor(outcome, levels = outcome_order),
+    mediator = factor(mediator, levels = mediator_order),
+    est_ci = format_est_ci(b_path_est, b_path_ci_low, b_path_ci_high),
+    p_fmt = format_p(b_path_p),
+    sig = b_path_p <= 0.05
+  ) %>%
+  dplyr::select(mediator, outcome, est_ci, p_fmt, sig) %>%
+  arrange(mediator, outcome)
+
+#############################################
+# Add platform header rows
+
+headers <- table_df %>%
+  distinct(mediator) %>%
+  mutate(
+    outcome = NA,
+    est_ci = "",
+    p_fmt = "",
+    sig = FALSE,
+    row_type = "platform"
+  )
+
+rows <- table_df %>%
+  mutate(row_type = "outcome")
+
+table_for_gt <- bind_rows(headers, rows) %>%
+  mutate(row_type = factor(row_type, levels = c("platform", "outcome"))) %>%
+  arrange(mediator, row_type, outcome) %>%
+  mutate(
+    stub = ifelse(
+      row_type == "platform",
+      as.character(mediator),
+      as.character(outcome)
+    ),
+    across(
+      c(est_ci, p_fmt),
+      ~ ifelse(is.na(.x), "", .x)
+    ),
+    sig = ifelse(is.na(sig), FALSE, sig)
+  ) %>%
+  dplyr::select(
+    mediator,
+    outcome,
+    row_type,
+    stub,
+    est_ci,
+    p_fmt,
+    sig
+  )
 
 #############################################
 # Create gt table
 
-h1_gt <- h1_for_gt %>%
-  gt(rowname_col = "outcome", groupname_col = "level") %>%
-  cols_hide(sig) %>%
+table_s23 <- table_for_gt %>%
+  gt(rowname_col = "stub") %>%
+  cols_hide(c(mediator, outcome, row_type, sig)) %>%
   cols_label(
-    est_ci    = "Estimate [95% CI]",
-    p_fmt     = md("*p*"),
+    est_ci = "Estimate [95% CI]",
+    p_fmt = md("*p*")
   ) %>%
-  cols_align(
-    align = "center"
-  )%>%
+  cols_align("center") %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
@@ -102,43 +156,25 @@ h1_gt <- h1_for_gt %>%
     locations = cells_stub()
   ) %>%
   tab_style(
-    style = list(
-      cell_text(weight = "bold")),
-    locations = cells_row_groups(groups = c("Momentary", "Weekly", "Monthly"))
-  ) %>%
-  tab_options(
-    table.border.top.style    = "none",
-    table.border.bottom.style = "none",
-    data_row.padding          = px(4),
-    table.width               = pct(60),
-    
-    heading.border.bottom.style = "solid",      # line below title/subtitle (if any)
-    column_labels.border.top.style = "solid",   # line between spanners and column labels
-    column_labels.border.bottom.style = "solid",# line under column labels
-    
-    row.striping.include_table_body = FALSE,    # no striping
-    row.striping.include_stub = FALSE,
-    
-    table_body.hlines.style = "none",           # no horizontal lines between rows
-    table_body.vlines.style = "none",           # no vertical lines between columns
-    column_labels.vlines.style = "none",         # no vertical lines in column headers
-    stub.border.style = "none",
-    
-    row_group.border.top.style        = "none",
-    row_group.border.bottom.style     = "none"
+    style = cell_text(weight = "bold", indent = px(20)),
+    locations = cells_stub(rows = row_type == "platform")
   ) %>%
   tab_style(
-    style = cell_text(indent = px(20)),
-    locations = cells_stub()
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_stub(
-      rows = outcome == "Affective Wellbeing"
-    )
+    style = cell_text(indent = px(40)),
+    locations = cells_stub(rows = row_type == "outcome")
   ) %>%
   apply_supplementary_table_style()
 
-h1_gt
+#############################################
+# Save table
 
-gtsave(h1_gt, "Plots/tables_s14.png", vwidth = SUPPLEMENTARY_TABLE_VWIDTH, vheight = 0)
+if (!requireNamespace("webshot2", quietly = TRUE)) {
+  stop("The webshot2 package is required to save gt tables as PNG files.")
+}
+
+gtsave(
+  table_s23,
+  "Plots/tables_s14.png",
+  vwidth = SUPPLEMENTARY_TABLE_VWIDTH,
+  vheight = 0
+)

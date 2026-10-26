@@ -22,12 +22,19 @@
 run_requested_analyses <- function() {
 
   # Run main models only
-  run_analysis_batch(
-    levels = c("momentary", "weekly", "monthly"),
-    analysis_ivs = c(
-      "political_orientation"
-    ),
-    include_controls = TRUE
+  # run_analysis_batch(
+  #   levels = c("momentary", "weekly", "monthly"),
+  #   analysis_ivs = c(
+  #     "political_orientation"
+  #   ),
+  #   include_controls = TRUE
+  # )
+  # 
+  run_analysis(
+    level = "weekly",
+    analysis_iv = "political_orientation",
+    include_controls = TRUE,
+    save_file_name = "weekly_results_withcontrols_nonuse_zero.csv"
   )
 
   # Run alternative IVs models only

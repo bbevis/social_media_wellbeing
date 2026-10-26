@@ -57,3 +57,6 @@
 "Valid political orientation","income","$150,000 to $174,999",158,2.8
 "Valid political orientation","income","$175,000 to $199,999",99,2
 "Valid political orientation","income","$200,000 or more",165,3
+"Valid political orientation","political_group","Liberal",1564,34.4
+"Valid political orientation","political_group","Moderate",1123,29.5
+"Valid political orientation","political_group","Conservative",1613,36.1

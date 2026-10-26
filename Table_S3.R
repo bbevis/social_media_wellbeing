@@ -67,16 +67,18 @@ mediator_order <- unique(mediator_order)
 h2_df <- h2_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
   filter(!mediator_raw %in% c(
-    "total_platform",
+    "total_platform", "sm_minutes",
     "facebook", "instagram", "reddit", "snapchat", "tiktok", "twitter", "youtube"
-  ))
+  )) %>%
+  filter(level != "Momentary") %>%
+  filter(!(mediator_raw == "social" & level %in% c("Weekly", "Monthly")))
 
 #############################################
 # Prepare data for gt table
 
 h2_for_gt <- h2_df %>%
   mutate(
-    level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
+    level = factor(level, levels = c("Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
     p_fmt  = sprintf("%.3f", p), # Format p value
     sig = p <= 0.05,
@@ -106,7 +108,7 @@ h2_gt <- h2_for_gt %>%
   tab_style(
     style = list(
       cell_text(weight = "bold")),
-    locations = cells_row_groups(groups = c("Momentary", "Weekly", "Monthly"))
+    locations = cells_row_groups(groups = c("Weekly", "Monthly"))
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
@@ -114,8 +116,7 @@ h2_gt <- h2_for_gt %>%
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_stub(rows = mediator == "All Apps" |
-                             (mediator == "Social Media" & level != "Momentary"))
+    locations = cells_stub(rows = mediator == "All Apps")
   ) %>%
   tab_options(
     table.border.top.style    = "none",

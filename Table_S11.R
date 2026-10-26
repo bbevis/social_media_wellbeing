@@ -1,164 +1,246 @@
 #############################################
 #
-# H2 results table - Political Orientation on Social/Digital Media Use
+#       Table S11
+#       Weekly 60% EMA threshold mediation
+#       Social media use between political orientation and wellbeing
 #
 #############################################
 
 library(dplyr)
-library(ggplot2)
-library(ggstance)
 library(gt)
 source("supplementary_table_style.R")
 library(tidyr)
-library(webshot2)
 
 #############################################
 # Load data
 
-monthly_nc = read.csv('monthly_results_nocontrols_presidential_support.csv')
-weekly_nc = read.csv('weekly_results_nocontrols_presidential_support.csv')
-momentary_nc = read.csv('momentary_results_nocontrols_presidential_support.csv')
+weekly_nc_60 <- read.csv("weekly_results_nocontrols_60ema.csv")
 
-
-platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
-activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other","health", "total_activity")
-minutes <- c("sm_minutes")
+platforms <- c(
+  "total_platform",
+  "facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat"
+)
 
 #############################################
-# H2 table: combine and summarise
+# Prepare data
 
-h2_df = monthly_nc %>%
-  filter(outcome == 'awb_t2') %>%
-  dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-  mutate(level = 'Monthly') %>%
-  bind_rows(
-    weekly_nc %>%
-      filter(outcome == 'awb_week') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Weekly')) %>%
-  bind_rows(
-    momentary_nc %>%
-      filter(outcome == 'awb_momentary') %>%
-      dplyr::select(mediator, path_a, path_a_CI_lower, path_a_CI_upper, path_a_p) %>%
-      mutate(level = 'Momentary')) %>%
-  filter(mediator %in% c(platforms, activities, minutes)) %>%
-  group_by(mediator, level) %>%
+path_a_df <- weekly_nc_60 %>%
+  filter(mediator %in% platforms, outcome == "awb_week") %>%
+  group_by(mediator) %>%
+  summarise(path_a_p = mean(path_a_p), .groups = "drop")
+
+h4_df <- weekly_nc_60 %>%
+  dplyr::select(
+    mediator, outcome, path_a_p, path_b_p,
+    ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
+  ) %>%
+  filter(mediator %in% platforms) %>%
+  group_by(mediator, outcome) %>%
   summarise(
-    m   = mean(path_a),
-    lwr = mean(path_a_CI_lower, na.rm = TRUE),
-    upr = mean(path_a_CI_upper, na.rm = TRUE),
-    p   = mean(path_a_p),
+    path_a_p_model = mean(path_a_p),
+    path_b_p = mean(path_b_p),
+    acme = mean(ACME),
+    acme_lwr = mean(ACME_CI_lower, na.rm = TRUE),
+    acme_upr = mean(ACME_CI_upper, na.rm = TRUE),
+    prop_mediated = mean(prop_mediated),
     .groups = "drop"
   ) %>%
+  left_join(path_a_df, by = "mediator") %>%
   mutate(
-    mediator_raw = mediator,
-    level = factor(level, levels = c("Momentary","Weekly","Monthly")),
-    type  = case_when(
-      mediator %in% platforms  ~ "Platform",
-      mediator %in% activities ~ "Activity",
-      TRUE ~ "Rest"
-    ),
+    level = factor("Weekly", levels = "Weekly"),
+    path_a_sig = path_a_p <= 0.05,
+    path_b_sig = path_b_p <= 0.05,
+    acme_sig = (acme_lwr > 0 | acme_upr < 0) &
+      is.finite(acme_lwr) & is.finite(acme_upr),
+    mediation_sig = path_a_p_model <= 0.05 & path_b_sig & acme_sig,
     mediator = case_when(
-      mediator == "total_platform"  ~ "Social Media",
-      mediator == "total_activity"  ~ "All Apps",
-      mediator == "sm_minutes"  ~ "Social Media",
+      mediator == "total_platform" ~ "Social Media",
       TRUE ~ mediator
+    ),
+    outcome = dplyr::recode(
+      outcome,
+      "awb_week" = "Affective Wellbeing",
+      "angry_rev" = "Angry (r)",
+      "worried_rev" = "Worried (r)",
+      "happy" = "Happy",
+      "sad_rev" = "Sad (r)",
+      "stressed_rev" = "Stressed (r)",
+      "lonely_rev" = "Lonely (r)",
+      "accepted" = "Accepted"
     ),
     mediator = tools::toTitleCase(mediator),
     mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
   )
-    
+
+outcome_order <- c(
+  "Affective Wellbeing",
+  "Accepted",
+  "Angry (r)",
+  "Happy",
+  "Lonely (r)",
+  "Sad (r)",
+  "Stressed (r)",
+  "Worried (r)"
+)
 
 mediator_order <- c(
   "Social Media",
-  "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-  "Other", "Productivity", "Shopping", "Social", "Utilities",
-  "Social Media",
   "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
 )
-mediator_order <- unique(mediator_order)
 
-h2_df <- h2_df %>%
-  mutate(mediator = factor(mediator, levels = mediator_order)) %>%
-  filter(!mediator%in%c("All Apps",
-                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-                        "Other", "Productivity", "Shopping", "Social", "Utilities"))
+h4_df <- h4_df %>%
+  mutate(
+    mediator = factor(mediator, levels = mediator_order),
+    outcome = factor(outcome, levels = outcome_order)
+  ) %>%
+  filter(!is.na(mediator), !is.na(outcome))
+
+stopifnot(
+  !anyNA(h4_df$path_a_p),
+  !anyNA(h4_df$path_a_p_model),
+  !anyNA(h4_df$path_b_p)
+)
 
 #############################################
 # Prepare data for gt table
 
-h2_for_gt <- h2_df %>%
+h4_for_gt <- h4_df %>%
   mutate(
-    level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
-    est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
-    p_fmt  = sprintf("%.3f", p), # Format p value
-    sig = p <= 0.05,
-    est_ci = gsub("0\\.", ".", est_ci),
-    p_fmt  = gsub("0\\.", ".", p_fmt)
+    path_a_p_fmt = sprintf("%.3f", path_a_p),
+    path_b_p_fmt = sprintf("%.3f", path_b_p),
+    acme_ci_prop = sprintf(
+      "%.3f [%.3f, %.3f]\n(%.2f%%)",
+      acme, acme_lwr, acme_upr, prop_mediated * 100
+    )
   ) %>%
-  dplyr::select(mediator_raw, mediator, level, est_ci, p_fmt, sig) %>%
-  arrange(level, mediator)
+  dplyr::select(
+    level, mediator, outcome,
+    path_a_p_fmt, path_b_p_fmt, acme_ci_prop,
+    path_a_sig, mediation_sig
+  ) %>%
+  mutate(across(where(is.character),
+                ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
+  arrange(outcome, mediator)
 
 #############################################
-# Create gt table
+# Create one table with shared weekly and social-media rows
 
-h2_gt <- h2_for_gt %>%
-  gt(rowname_col = "mediator", groupname_col = "level") %>%
-  cols_hide(c(mediator_raw, sig)) %>%
-  cols_label(
-    est_ci    = "Estimate [95% CI]",
-    p_fmt     = md("*p*"),
+outcome_columns <- tibble::tribble(
+  ~outcome,                ~key,
+  "Affective Wellbeing",  "affective_wellbeing",
+  "Accepted",             "accepted",
+  "Angry (r)",            "angry",
+  "Happy",                "happy",
+  "Lonely (r)",           "lonely",
+  "Sad (r)",              "sad",
+  "Stressed (r)",         "stressed",
+  "Worried (r)",          "worried"
+)
+
+h4_wide <- h4_for_gt %>%
+  mutate(
+    outcome = as.character(outcome),
+    outcome_key = outcome_columns$key[match(outcome, outcome_columns$outcome)],
+    mediator = factor(mediator, levels = mediator_order)
+  ) %>%
+  dplyr::select(
+    level, mediator, path_a_p_fmt, path_a_sig,
+    outcome_key, path_b_p_fmt, acme_ci_prop, mediation_sig
+  ) %>%
+  pivot_wider(
+    names_from = outcome_key,
+    values_from = c(path_b_p_fmt, acme_ci_prop, mediation_sig),
+    names_glue = "{.value}_{outcome_key}"
+  ) %>%
+  mutate(
+    across(starts_with("path_b_p_fmt_"), ~ coalesce(.x, "—")),
+    across(starts_with("acme_ci_prop_"), ~ coalesce(.x, "—")),
+    across(starts_with("mediation_sig_"), ~ coalesce(.x, FALSE))
+  ) %>%
+  arrange(mediator)
+
+path_b_cols <- paste0("path_b_p_fmt_", outcome_columns$key)
+mediation_cols <- paste0("acme_ci_prop_", outcome_columns$key)
+sig_cols <- paste0("mediation_sig_", outcome_columns$key)
+
+column_labels <- c(
+  list(path_a_p_fmt = md("Path a *p*")),
+  stats::setNames(rep(list(md("Path b *p*")), nrow(outcome_columns)), path_b_cols),
+  stats::setNames(
+    rep(list(html("ACME [95% CI]<br>(Prop. mediated)")), nrow(outcome_columns)),
+    mediation_cols
+  )
+)
+
+h4_gt <- h4_wide %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s17") %>%
+  cols_hide(c(path_a_sig, all_of(sig_cols))) %>%
+  cols_label(.list = column_labels) %>%
+  cols_width(
+    mediator ~ px(210),
+    path_a_p_fmt ~ px(110),
+    all_of(path_b_cols) ~ px(110),
+    all_of(mediation_cols) ~ px(400)
   ) %>%
   cols_align(
-    align = "center"
-  )%>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
-  ) %>%
-  tab_style(
-    style = cell_text(align = "left"),
-    locations = cells_stub()
-  ) %>%
-  tab_style(
-    style = list(
-      cell_text(weight = "bold")),
-    locations = cells_row_groups(groups = c("Momentary", "Weekly", "Monthly"))
+    align = "center",
+    columns = c(path_a_p_fmt, all_of(c(path_b_cols, mediation_cols)))
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_stub(rows = mediator == "All Apps" |
-                             (mediator == "Social Media" & level != "Momentary"))
-  ) %>%
-  tab_options(
-    table.border.top.style    = "none",
-    table.border.bottom.style = "none",
-    data_row.padding          = px(4),
-    table.width               = pct(60),
-    
-    heading.border.bottom.style = "solid",      # line below title/subtitle (if any)
-    column_labels.border.top.style = "solid",   # line between spanners and column labels
-    column_labels.border.bottom.style = "solid",# line under column labels
-    
-    row.striping.include_table_body = FALSE,    # no striping
-    row.striping.include_stub = FALSE,
-    
-    table_body.hlines.style = "none",           # no horizontal lines between rows
-    table_body.vlines.style = "none",           # no vertical lines between columns
-    column_labels.vlines.style = "none",         # no vertical lines in column headers
-    stub.border.style = "none",
-    
-    row_group.border.top.style        = "none",
-    row_group.border.bottom.style     = "none"
+    locations = cells_row_groups()
   ) %>%
   tab_style(
     style = cell_text(indent = px(20)),
     locations = cells_stub()
   ) %>%
-  apply_supplementary_table_style()
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub(rows = mediator == "Social Media")
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = path_a_p_fmt, rows = path_a_sig)
+  )
 
-h2_gt
+for (i in seq_len(nrow(outcome_columns))) {
+  path_b_col <- path_b_cols[[i]]
+  mediation_col <- mediation_cols[[i]]
+  sig_col <- sig_cols[[i]]
 
-gtsave(h2_gt, "Plots/tables_s11.png", vwidth = SUPPLEMENTARY_TABLE_VWIDTH, vheight = 0)
+  h4_gt <- h4_gt %>%
+    tab_spanner(
+      label = md(paste0("**", outcome_columns$outcome[[i]], "**")),
+      columns = all_of(c(path_b_col, mediation_col))
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(
+        columns = all_of(c(path_b_col, mediation_col)),
+        rows = !!rlang::sym(sig_col)
+      )
+    )
+}
+
+h4_gt <- h4_gt %>%
+  apply_supplementary_table_style(table_width = px(4400)) %>%
+  tab_options(table.font.size = px(34)) %>%
+  opt_css(
+    css = paste0(
+      "#table_s17 th[id^='acme_ci_prop_'], ",
+      "#table_s17 td[headers*='acme_ci_prop_'] { ",
+      "padding-left: 1px !important; ",
+      "padding-right: 10px !important; ",
+      "white-space: pre-line !important; ",
+      "text-align: center !important; }"
+    )
+  )
+
+h4_gt
+
+gtsave(
+  h4_gt,
+  "Plots/tables_s11.png",
+  vwidth = 4700,
+  vheight = 0
+)

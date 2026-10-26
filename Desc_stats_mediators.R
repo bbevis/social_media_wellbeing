@@ -105,7 +105,8 @@ mediation_order <- c(
 weekly_desc <- make_desc_stats(weekly_df, "Weekly",
                                weekly_mediators,
                                id_col = "id",
-                               row_filter_col = "ema_50_exclude")
+                               row_filter_col = "ema_50_exclude") %>%
+  mutate(`With App/Category (%)` = if_else(Variable == "total_activity", NA_real_, round(100 * `N participants` / n_distinct(weekly_df$id), 1)))
 
 momentary_desc <- make_desc_stats(momentary_df, "Momentary",
                                   momentary_mediators,
@@ -118,6 +119,7 @@ mediators_all <- bind_rows(momentary_desc, weekly_desc) %>%
     Variable = factor(Variable, levels = mediation_order)
   ) %>%
   arrange(Level, Variable) %>%
+  relocate(`With App/Category (%)`, .after = `N participants`) %>%
   mutate(
     Level = case_when(
       Level == "Momentary" ~ "Momentary Level",
@@ -129,6 +131,7 @@ mediators_all <- bind_rows(momentary_desc, weekly_desc) %>%
 
 tbl_momentary <- mediators_all %>%
   filter(Level == "Momentary Level") %>%
+  mutate(Variable = recode(as.character(Variable), "Social Media Time" = "Social Media")) %>%
   rename(
     'N Participants' = `N participants`,
     'N Observations' = `N observations`
@@ -146,12 +149,12 @@ tbl_weekly <- mediators_all %>%
 tbl_weekly_categories <- tbl_weekly %>%
   filter(as.character(Variable) %in% c(
     "Overall Screentime", "Creativity", "Education", "Entertainment", "Games",
-    "Health", "Information", "Other", "Productivity", "Shopping", "Social Media", "Utilities"
+    "Health", "Information", "Other", "Productivity", "Shopping", "Utilities"
   ))
 
 tbl_weekly_platforms <- tbl_weekly %>%
   filter(as.character(Variable) %in% c(
-    "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
+    "Social Media", "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
   ))
 
 tbl3 <- bind_rows(
@@ -215,10 +218,11 @@ tbl_final <- tbl3 %>%
   ) %>%
     
   #### ----- LABELS -----
-  cols_label(Variable = "Variable") %>%
+  cols_label(Variable = "Variable", `With App/Category (%)` = "% with App installed") %>%
   cols_width(
     Variable ~ px(330),
     `N Participants` ~ px(150),
+    `With App/Category (%)` ~ px(250),
     `N Observations` ~ px(150),
     Mean ~ px(100),
     SD ~ px(100),
@@ -226,7 +230,7 @@ tbl_final <- tbl3 %>%
     Max ~ px(100)
   ) %>%
   cols_hide("Variable_raw") %>%
-  sub_missing(columns = c("N Participants", "N Observations", "Mean", "SD", "Min", "Max"), missing_text = "") %>%
+  sub_missing(columns = c("N Participants", "With App/Category (%)", "N Observations", "Mean", "SD", "Min", "Max"), missing_text = "") %>%
   
   #### ----- BOLD COLUMN LABELS -----
   tab_style(
@@ -256,6 +260,7 @@ tbl_final <- tbl3 %>%
   
   #### ----- NUMBER FORMATTING -----
   fmt_number(columns = c("Mean", "SD", "Min", "Max"), decimals = 2) %>%
+    fmt_number(columns = `With App/Category (%)`, decimals = 1) %>%
     fmt_number(columns = c("N Participants", "N Observations"), decimals = 0, use_seps = TRUE) %>%
   
   #### ----- ALIGNMENT -----
@@ -268,7 +273,7 @@ tbl_final <- tbl3 %>%
     table.font.names = "Helvetica, Arial, sans-serif",
     heading.align = "left",
     data_row.padding = px(4),
-    table.width = pct(70),
+    table.width = pct(80),
     
     # keep outer borders
     table.border.top.style = "solid",
@@ -366,3 +371,14 @@ write.csv(
   "study1_social_media_by_political_group.csv",
   row.names = FALSE
 )
+
+instagram_means <- make_grouped_desc(weekly_df, "Weekly", "instagram", "ema_50_exclude")
+facebook_counts <- weekly_df %>%
+  filter(ema_50_exclude == 0L) %>%
+  summarise(facebook_installed_n = n_distinct(id[!is.na(facebook)]), participants_n = n_distinct(weekly_df$id))
+
+manuscript_stats <- facebook_counts %>% mutate(
+  instagram_difference_minutes = round(60 * (instagram_means$Mean[instagram_means$Political_group == "Conservative"] - instagram_means$Mean[instagram_means$Political_group == "Liberal"])),
+  facebook_installed_percent = round(100 * facebook_installed_n / participants_n, 1), .before = 1
+)
+print(manuscript_stats)

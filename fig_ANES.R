@@ -90,7 +90,7 @@ color_palette <- c(
   "Twitter" = "#F28E2B",
   "TikTok" = "#8A3FFC",
   "Instagram" = "#C13584",
-  "YouTube" = "#D55E00",
+  "YouTube" = "#2E7D32",
   "Reddit" = "#E41A1C",
   "Social Media" = "#009E9A",
   "n.s." = "grey85"

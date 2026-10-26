@@ -10,7 +10,7 @@ apply_supplementary_table_style <- function(
 ) {
   table <- gt::tab_options(
     table,
-    table.font.size = gt::px(23),
+    table.font.size = gt::px(28),
     table.font.names = "Times",
     heading.align = "left",
     data_row.padding = gt::px(4),

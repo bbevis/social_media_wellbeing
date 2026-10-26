@@ -92,7 +92,7 @@ p <- ggplot(
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor.y = element_blank(),
-    axis.text.y = element_text(size = 26, lineheight = 1)
+    axis.text.y = element_text(size = 22, lineheight = 1)
   )
 
 ggsave(

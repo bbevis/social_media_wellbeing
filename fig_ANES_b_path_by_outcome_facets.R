@@ -59,8 +59,8 @@ stopifnot(
 
 plot_df <- plot_df %>%
   mutate(
-    mediator = factor(mediator, levels = rev(mediator_order)),
-    outcome = factor(outcome, levels = outcome_order)
+    mediator = factor(mediator, levels = mediator_order),
+    outcome = factor(outcome, levels = rev(outcome_order))
   )
 
 x_limit <- max(abs(c(plot_df$lwr, plot_df$upr)), na.rm = TRUE)
@@ -68,8 +68,8 @@ x_limit <- max(0.2, ceiling(x_limit * 10) / 10)
 
 y_axis_labels <- function(x) {
   labels <- ifelse(
-    x == "Social Media",
-    "bold('Social Media')",
+    x == "Affective Wellbeing",
+    "bold('Affective Wellbeing')",
     paste0("'", x, "'")
   )
   parse(text = labels)
@@ -94,10 +94,10 @@ theme_clean <- theme_minimal(base_size = 15) +
 
 p <- ggplot(
   plot_df,
-  aes(x = m, y = mediator, color = color_var)
+  aes(x = m, y = outcome, color = color_var)
 ) +
   geom_hline(
-    yintercept = seq(1.5, length(mediator_order) - 0.5, by = 1),
+    yintercept = seq(1.5, length(outcome_order) - 0.5, by = 1),
     linewidth = 0.3,
     colour = "grey75"
   ) +
@@ -108,7 +108,7 @@ p <- ggplot(
     size = 0.45
   ) +
   geom_point(size = 2.5) +
-  facet_wrap(~outcome, ncol = 3) +
+  facet_wrap(~mediator, ncol = 4) +
   coord_cartesian(xlim = c(-x_limit, x_limit)) +
   scale_y_discrete(labels = y_axis_labels, drop = FALSE) +
   scale_color_manual(
@@ -125,6 +125,6 @@ ggsave(
   "Plots/ANES_mediators_wellbeing_by_outcome_facets.png",
   plot = p,
   width = 18,
-  height = 6,
+  height = 10,
   dpi = 300
 )

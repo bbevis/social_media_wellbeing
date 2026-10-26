@@ -70,6 +70,7 @@ diagnostic_progress <- getOption("coco.diagnostic_progress", getOption("appusage
 # Load data
 weekly_df = read.csv("weekly.csv")
 # weekly_df = read.csv("weekly_missingisNA.csv")
+# weekly_df = read.csv("weekly_missingisZERO.csv")
 
 
 # Global variables

@@ -10,7 +10,6 @@ library(dplyr)
 library(tidyr)
 library(gt)
 source("supplementary_table_style.R")
-library(magick)
 library(tools)
 
 #############################################
@@ -84,10 +83,10 @@ h3_df <- monthly_wc %>%
 
 outcome_order <- c(
   "Affective Wellbeing",
-  "Life Satisfaction",
   "Accepted",
-  "Happy",
   "Angry (r)",
+  "Happy",
+  "Life Satisfaction",
   "Lonely (r)",
   "Sad (r)",
   "Stressed (r)",
@@ -108,9 +107,11 @@ h3_df = h3_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
   mutate(outcome = factor(outcome, levels = outcome_order)) %>%
   filter(!mediator_raw %in% c(
-    "total_platform",
+    "total_platform", "sm_minutes",
     "facebook", "instagram", "reddit", "snapchat", "tiktok", "twitter", "youtube"
-  ))
+  )) %>%
+  filter(level != "Momentary") %>%
+  filter(!(mediator_raw == "social" & level %in% c("Weekly", "Monthly")))
 
 
 #############################################
@@ -126,172 +127,116 @@ h3_for_gt <- h3_df %>%
   # Remove leading zeros everywhere (ACME + CI + p-values)
   mutate(across(where(is.character),
                 ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
-  arrange(level, mediator, outcome)
+  arrange(outcome, mediator, level)
 
-
-###############################################################
-# DEFINE COMPOSITE VS SINGLE OUTCOMES
-
-
-composite_outcomes <- c(
-  "Affective Wellbeing",
-  "Life Satisfaction"
-)
-
-single_outcomes <- c(
-  "Accepted", "Happy"
-)
-
-reverse_coded_single_outcomes <- c(
-  "Angry (r)", "Lonely (r)", "Sad (r)", "Stressed (r)", "Worried (r)"
-)
-
-h3_left   <- h3_for_gt %>% filter(outcome %in% composite_outcomes)
-h3_middle <- h3_for_gt %>% filter(outcome %in% single_outcomes)
-h3_right  <- h3_for_gt %>% filter(outcome %in% reverse_coded_single_outcomes)
 
 #############################################
-# Create gt table
+# Create one table with shared time and app-activity rows
 
-make_h3_table <- function(df_input) {
-  
-  df_input %>%
-    # ensure ordering
-    mutate(
-      level    = factor(level,    levels = c("Momentary","Weekly","Monthly")),
-      mediator = factor(mediator, levels = mediator_order),
-      outcome  = factor(outcome,  levels = outcome_order)
-    ) %>%
-    arrange(level, mediator, outcome) %>%
-    
-    # ----- add one mediator "header" row per level × mediator -----
-  {
-    base <- .
-    
-    headers <- base %>%
-      distinct(level, mediator) %>%
-      mutate(
-        outcome = NA,
-        est_ci = "",
-        p_fmt = "",
-        sig = FALSE,
-        row_type = "mediator"
-      )
-    
-    rows <- base %>%
-      mutate(row_type = "outcome")
-    
-    bind_rows(headers, rows)
-  } %>%
-    
-    arrange(level, mediator, row_type, outcome) %>%
-    
-    # ----- single stub column: mediator vs outcome label -----
+level_order <- c("Momentary", "Weekly", "Monthly")
+
+outcome_columns <- tibble::tribble(
+  ~outcome,                ~key,
+  "Affective Wellbeing",  "affective_wellbeing",
+  "Accepted",             "accepted",
+  "Angry (r)",            "angry",
+  "Happy",                "happy",
+  "Life Satisfaction",    "life_satisfaction",
+  "Lonely (r)",           "lonely",
+  "Sad (r)",              "sad",
+  "Stressed (r)",         "stressed",
+  "Worried (r)",          "worried"
+)
+
+h3_wide <- h3_for_gt %>%
   mutate(
-    stub = ifelse(
-      row_type == "mediator",
-      as.character(mediator),   # mediator label
-      as.character(outcome)     # outcome label
-    )
+    outcome = as.character(outcome),
+    outcome_key = outcome_columns$key[match(outcome, outcome_columns$outcome)],
+    mediator = factor(mediator, levels = mediator_order),
+    level = factor(level, levels = level_order)
   ) %>%
-    
-    # mediator rows: make stats blank (not "NA")
-    mutate(
-      est_ci = ifelse(row_type == "mediator", "", est_ci),
-      p_fmt = ifelse(row_type == "mediator", "", p_fmt),
-      sig = ifelse(row_type == "mediator", FALSE, sig)
-    ) %>%
-    
-    dplyr::select(
-      level, mediator, outcome, row_type, stub, est_ci, p_fmt, sig
-    ) %>%
-    
-    # build gt table
-  gt(rowname_col = "stub", groupname_col = "level") %>%
-    
-    # hide helper columns – still usable in `rows =` conditions
-    cols_hide(c(mediator, outcome, row_type, sig)) %>%
-    
-    # column labels
-    cols_label(
-      est_ci = "Estimate [95% CI]",
-      p_fmt = md("*p*")
-    ) %>%
-    
-    # stub left, numbers center
-    cols_align("center") %>%
-    tab_style(
-      style = cell_text(align = "left"),
-      locations = cells_stub()
+  dplyr::select(level, mediator, outcome_key, est_ci, p_fmt, sig) %>%
+  pivot_wider(
+    names_from = outcome_key,
+    values_from = c(est_ci, p_fmt, sig),
+    names_glue = "{.value}_{outcome_key}"
+  ) %>%
+  mutate(
+    across(starts_with("est_ci_"), ~ coalesce(.x, "—")),
+    across(starts_with("p_fmt_"), ~ coalesce(.x, "—")),
+    across(starts_with("sig_"), ~ coalesce(.x, FALSE))
+  ) %>%
+  arrange(level, mediator)
+
+estimate_cols <- paste0("est_ci_", outcome_columns$key)
+p_cols <- paste0("p_fmt_", outcome_columns$key)
+sig_cols <- paste0("sig_", outcome_columns$key)
+
+column_labels <- c(
+  stats::setNames(as.list(rep("Estimate [95% CI]", nrow(outcome_columns))), estimate_cols),
+  stats::setNames(rep(list(md("*p*")), nrow(outcome_columns)), p_cols)
+)
+
+h3_gt <- h3_wide %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s5") %>%
+  cols_hide(all_of(sig_cols)) %>%
+  cols_label(.list = column_labels) %>%
+  cols_width(
+    mediator ~ px(210),
+    all_of(estimate_cols) ~ px(330),
+    all_of(p_cols) ~ px(80)
+  ) %>%
+  cols_align(align = "center", columns = all_of(c(estimate_cols, p_cols))) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups()
+  ) %>%
+  tab_style(
+    style = cell_text(indent = px(20)),
+    locations = cells_stub()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub(rows = mediator == "All Apps")
+  )
+
+for (i in seq_len(nrow(outcome_columns))) {
+  estimate_col <- estimate_cols[[i]]
+  p_col <- p_cols[[i]]
+  sig_col <- sig_cols[[i]]
+
+  h3_gt <- h3_gt %>%
+    tab_spanner(
+      label = md(paste0("**", outcome_columns$outcome[[i]], "**")),
+      columns = all_of(c(estimate_col, p_col))
     ) %>%
     tab_style(
       style = cell_text(weight = "bold"),
-      locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
-    ) %>%
-    
-    # bold level row-group labels
-    tab_style(
-      style = cell_text(weight = "bold"),
-      locations = cells_row_groups()
-    ) %>%
-    
-    # INDENT + BOLD MEDIATORS ONLY
-    tab_style(
-      style = cell_text(weight = "bold", indent = px(20)),
-      locations = cells_stub(rows = row_type == "mediator" &
-                               !(stub == "Social Media" & level == "Momentary"))
-    ) %>%
-    
-    # INDENT OUTCOMES (NO BOLD)
-    tab_style(
-      style = cell_text(indent = px(40)),
-      locations = cells_stub(rows = row_type == "outcome")
-    ) %>%
-    
-    # general table options
-    tab_options(
-      table.font.size  = px(25),
-      data_row.padding = px(4),
-      table.width      = pct(40),
-      heading.border.bottom.style       = "solid",
-      column_labels.border.top.style    = "solid",
-      column_labels.border.bottom.style = "solid",
-      table.border.top.style            = "none",
-      table.border.bottom.style         = "none",
-      table_body.hlines.style           = "none",
-      table_body.vlines.style           = "none",
-      stub.border.style                 = "none",
-      row_group.border.top.style        = "none",
-      row_group.border.bottom.style     = "none"
-    ) %>%
-    apply_supplementary_table_style(table_width = pct(40))
+      locations = cells_body(
+        columns = all_of(c(estimate_col, p_col)),
+        rows = !!rlang::sym(sig_col)
+      )
+    )
 }
 
+h3_gt <- h3_gt %>%
+  apply_supplementary_table_style(table_width = px(3900)) %>%
+  tab_options(table.font.size = px(34)) %>%
+  opt_css(
+    css = paste0(
+      "#table_s5 th[id^='p_fmt_'], ",
+      "#table_s5 td[headers*='p_fmt_'] { ",
+      "padding-left: 1px !important; ",
+      "padding-right: 29px !important; ",
+      "text-align: center !important; }"
+    )
+  )
 
+h3_gt
 
-###############################################################
-# BUILD TABLE A, B & C
-
-
-h3_gt_left  <- make_h3_table(h3_left)  %>%
-  tab_header(title = md("**A. Composite Wellbeing Measures**"))
-
-h3_gt_middle <- make_h3_table(h3_middle) %>%
-  tab_header(title = md("**B. Single-Item Wellbeing Measures**"))
-
-h3_gt_right <- make_h3_table(h3_right) %>%
-  tab_header(title = md("**C. Reverse-Coded Single-Item Measures**"))
-
-# SAVE TABLES
-gtsave(h3_gt_left,   "Plots/table_h3_A.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
-gtsave(h3_gt_middle, "Plots/table_h3_B.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
-gtsave(h3_gt_right,  "Plots/table_h3_C.png", vwidth = SUPPLEMENTARY_WIDE_TABLE_VWIDTH, vheight = 0)
-
-# COMBINE IMAGES INTO ONE PNG
-img_A <- image_read("Plots/table_h3_A.png")
-img_B <- image_read("Plots/table_h3_B.png")
-img_C <- image_read("Plots/table_h3_C.png")
-
-combined_img <- image_append(c(img_A, img_B, img_C), stack = FALSE)
-
-image_write(combined_img, "Plots/tables_s5.png")
+gtsave(
+  h3_gt,
+  "Plots/tables_s5.png",
+  vwidth = 4200,
+  vheight = 0
+)

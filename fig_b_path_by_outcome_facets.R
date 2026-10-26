@@ -107,8 +107,8 @@ base_df <- bind_rows(
       "accepted" = "Accepted"
     ),
     level = factor(level, levels = c("Monthly", "Weekly", "Momentary")),
-    outcome = factor(outcome, levels = outcome_order),
-    mediator = factor(mediator, levels = rev(mediator_order)),
+    outcome = factor(outcome, levels = rev(outcome_order)),
+    mediator = factor(mediator, levels = mediator_order),
     sig = path_b_p <= 0.05,
     sig_label = ifelse(sig, "p <= .05", "n.s.")
   ) %>%
@@ -127,10 +127,10 @@ x_limit <- base_df %>%
   pull(limit)
 x_limit <- max(0.2, ceiling(x_limit * 10) / 10)
 
-y_limits <- seq(1.5, length(mediator_order) - 0.5, by = 1)
+y_limits <- seq(1.5, length(outcome_order) - 0.5, by = 1)
 
 y_axis_labels <- function(x) {
-  labels <- ifelse(x %in% c("Social Media", "Overall Screentime"),
+  labels <- ifelse(x == "Affective Wellbeing",
                    paste0("bold('", x, "')"),
                    paste0("'", str_wrap(x, width = 22), "'"))
   labels[x == " "] <- "''"
@@ -157,7 +157,7 @@ ggplot(
   base_df,
   aes(
     x = m,
-    y = mediator,
+    y = outcome,
     shape = level,
     colour = sig_label,
     group = interaction(level, mediator)
@@ -179,7 +179,7 @@ ggplot(
     size = 2.5,
     position = ggstance::position_dodgev(height = 0.6)
   ) +
-  facet_wrap(~outcome, ncol = 3) +
+  facet_wrap(~mediator, ncol = 3) +
   coord_cartesian(xlim = c(-x_limit, x_limit)) +
   scale_y_discrete(labels = y_axis_labels, drop = FALSE) +
   scale_shape_manual(
@@ -197,7 +197,7 @@ ggplot(
     colour = "none"
   ) +
   labs(
-    x = "Associations between Social and Digital Media Use and Wellbeing (H3)",
+    x = "Associations between Social Media Use and Wellbeing (H3)",
     y = ""
   ) +
   theme_clean
