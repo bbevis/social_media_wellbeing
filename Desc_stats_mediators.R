@@ -24,8 +24,8 @@ weekly_mediators <- c(
 )
 
 momentary_mediators <- c("sm_minutes")    # only minutes
-app_category_header <- "Digital Media App Use"
-social_media_header <- "Social Media App Use"
+app_category_header <- "Digital Media Use"
+social_media_header <- "Social Media Use"
 
 pretty_mediator <- function(x) {
   x <- dplyr::recode(

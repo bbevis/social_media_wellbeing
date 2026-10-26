@@ -131,9 +131,7 @@ bubble_df <- bind_rows(
       "Tiktok" = "TikTok",
       "Youtube" = "YouTube"
     ),
-    sig_row = path_a_p <= 0.05 &
-      path_b_p <= 0.05 &
-      (ACME_CI_lower > 0 | ACME_CI_upper < 0) &
+    sig_row = (ACME_CI_lower > 0 | ACME_CI_upper < 0) &
       is.finite(ACME_CI_lower) &
       is.finite(ACME_CI_upper)
   ) %>%
@@ -194,7 +192,7 @@ p <- ggplot(bubble_df, aes(x = a, y = b)) +
     guide  = guide_legend(override.aes = list(size = 5), order = 2)
   ) +
   scale_shape_manual(values = outcome_shape_vals,
-                     name = "Wellbeing outcome",
+                     name = NULL,
                      guide  = guide_legend(override.aes = list(size = 5, color = "black"), order = 1)) +
   scale_y_continuous(
     limits = c(-y_limit, y_limit),

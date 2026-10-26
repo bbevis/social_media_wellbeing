@@ -106,9 +106,7 @@ bubble_df <- bind_rows(
   filter(mediator %in% app_categories) %>%
   left_join(path_a_df, by = c("mediator", "level")) %>%
   mutate(
-    sig = a_p <= 0.05 &
-      b_p <= 0.05 &
-      (acme_lwr > 0 | acme_upr < 0) &
+    sig = (acme_lwr > 0 | acme_upr < 0) &
       is.finite(acme_lwr) &
       is.finite(acme_upr),
     mediator = if_else(
