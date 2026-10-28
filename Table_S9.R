@@ -1,249 +1,218 @@
 #############################################
-# Reverse Causality Analysis
-# Do wellbeing states predict later social media use?
-# Time-of-day block structure (morning/afternoon/evening/night)
+#
+#       Table S9
+#       Weekly 40% EMA threshold mediation
+#       Social media use between political orientation and wellbeing
+#
 #############################################
 
 library(dplyr)
-library(lme4)
-library(tidyr)
 library(gt)
 source("supplementary_table_style.R")
-library(stringr)
+library(tidyr)
 
+#############################################
 # Load data
-momentary_df <- read.csv("momentary.csv")
 
+weekly_nc_40 <- read.csv("weekly_results_nocontrols_40ema.csv")
 
+platforms <- c(
+  "total_platform",
+  "facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat"
+)
 
-block_df <- momentary_df %>%
-  group_by(id, calendar_date, time_of_day) %>%
+#############################################
+# Prepare data
+
+h4_df <- weekly_nc_40 %>%
+  dplyr::select(
+    mediator, outcome,
+    ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
+  ) %>%
+  filter(mediator %in% platforms) %>%
+  group_by(mediator, outcome) %>%
   summarise(
-    sm_minutes = mean(sm_minutes, na.rm = TRUE),
-    awb_momentary = mean(awb_momentary, na.rm = TRUE),
-    angry_rev = mean(angry_rev, na.rm = TRUE),
-    worried_rev = mean(worried_rev, na.rm = TRUE),
-    happy = mean(happy, na.rm = TRUE),
-    sad_rev = mean(sad_rev, na.rm = TRUE),
-    stressed_rev = mean(stressed_rev, na.rm = TRUE),
-    lonely_rev = mean(lonely_rev, na.rm = TRUE),
-    accepted = mean(accepted, na.rm = TRUE),
-    term = first(term),
-    week = first(week),
-    surveys_per_id = first(surveys_per_id),
-    post_election = first(post_election)
+    acme = mean(ACME),
+    acme_lwr = mean(ACME_CI_lower, na.rm = TRUE),
+    acme_upr = mean(ACME_CI_upper, na.rm = TRUE),
+    prop_mediated = mean(prop_mediated),
+    .groups = "drop"
   ) %>%
-  ungroup()
-
-
-
-block_df <- block_df %>%
-  arrange(id, calendar_date, time_of_day) %>%
-  group_by(id) %>%
-  mutate(block_idx = row_number()) %>%
-  ungroup()
-
-
-block_df <- block_df %>%
-  group_by(id) %>%
-  mutate(sm_wp = sm_minutes - mean(sm_minutes, na.rm = TRUE)) %>%
-  ungroup()
-
-
-dv_vars <- c(
-  "awb_momentary", "angry_rev", "worried_rev", "happy",
-  "sad_rev", "stressed_rev", "lonely_rev", "accepted"
-)
-
-block_df <- block_df %>%
-  group_by(id) %>%
   mutate(
-    across(all_of(dv_vars), ~ lag(.x, 1), .names = "{.col}_lag1"),
-    across(all_of(dv_vars), ~ lag(.x, 2), .names = "{.col}_lag2"),
-    across(all_of(dv_vars), ~ lag(.x, 3), .names = "{.col}_lag3")
-  ) %>%
-  ungroup()
-
-
-models <- list()
-
-for (dv in dv_vars) {
-  
-  # Lag 1
-  f1 <- as.formula(
-    paste0("sm_wp ~ ", dv, "_lag1 + term + week + surveys_per_id + post_election + (1 | id)")
-  )
-  models[[paste0(dv, "_lag1")]] <- lmer(f1, data = block_df)
-  
-  # Lag 2
-  f2 <- as.formula(
-    paste0("sm_wp ~ ", dv, "_lag2 + term + week + surveys_per_id + post_election + (1 | id)")
-  )
-  models[[paste0(dv, "_lag2")]] <- lmer(f2, data = block_df)
-  
-  # Lag 3
-  f3 <- as.formula(
-    paste0("sm_wp ~ ", dv, "_lag3 + term + week + surveys_per_id + post_election + (1 | id)")
-  )
-  models[[paste0(dv, "_lag3")]] <- lmer(f3, data = block_df)
-}
-
-
-results_list <- lapply(names(models), function(model_name) {
-  
-  m <- models[[model_name]]
-  s <- summary(m)
-  coefs <- s$coefficients
-  
-  predictor <- rownames(coefs)[2]  # wellbeing lag term
-  
-  pval <- 2 * (1 - pnorm(abs(coefs[predictor, "t value"])))
-  
-  ci <- confint(m, method = "Wald")
-  ci_row <- ci[predictor, ]
-  
-  data.frame(
-    model = model_name,
-    predictor = predictor,
-    estimate = coefs[predictor, "Estimate"],
-    std_error = coefs[predictor, "Std. Error"],
-    t_value = coefs[predictor, "t value"],
-    p_value = pval,
-    ci_lower = ci_row[1],
-    ci_upper = ci_row[2],
-    n_obs = nobs(m),
-    stringsAsFactors = FALSE
-  )
-})
-
-results_df <- do.call(rbind, results_list)
-
-write.csv(results_df, "reverse_causality_results.csv", row.names = FALSE)
-
-#####################################################
-# gt table
-
-results_df <- read.csv("reverse_causality_results.csv")
-
-results <- results_df %>%
-  mutate(
-    dv = str_replace(model, "_lag[123]", ""),
-    lag = str_extract(model, "lag[123]"),
-    lag_num = str_extract(lag, "[123]")
-  )
-
-results <- results %>%
-  mutate(
-    EstCI = sprintf(
-      "%.3f [%.3f, %.3f]",
-      estimate, ci_lower, ci_upper
+    level = factor("Weekly", levels = "Weekly"),
+    acme_sig = (acme_lwr > 0 | acme_upr < 0) &
+      is.finite(acme_lwr) & is.finite(acme_upr),
+    mediation_sig = acme_sig,
+    mediator = case_when(
+      mediator == "total_platform" ~ "Social Media",
+      TRUE ~ mediator
     ),
-    # Remove leading zeros: 0.246 → .246, -0.345 → -.345
-    EstCI = gsub("0\\.", ".", EstCI),
-    EstCI = gsub("-0\\.", "-.", EstCI),
-    
-    # p-values: remove leading zero except < .001
-    p_fmt = case_when(
-      p_value < .001 ~ "< .001",
-      TRUE ~ sub("^0\\.", ".", sprintf("%.3f", p_value))
+    outcome = dplyr::recode(
+      outcome,
+      "awb_week" = "Affective Wellbeing",
+      "angry_rev" = "Angry (r)",
+      "worried_rev" = "Worried (r)",
+      "happy" = "Happy",
+      "sad_rev" = "Sad (r)",
+      "stressed_rev" = "Stressed (r)",
+      "lonely_rev" = "Lonely (r)",
+      "accepted" = "Accepted"
     ),
-    sig = p_value <= 0.05
+    mediator = tools::toTitleCase(mediator),
+    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
   )
-
-
-wide <- results %>%
-  select(dv, lag_num, EstCI, p_fmt, sig) %>%
-  pivot_wider(
-    names_from = lag_num,
-    values_from = c(EstCI, p_fmt, sig),
-    names_glue = "{.value}_Lag{lag_num}"
-  )
-
-dv_labels <- c(
-  "awb_momentary" = "Affective Wellbeing",
-  "accepted"      = "Accepted",
-  "happy"         = "Happy",
-  "angry_rev"     = "Angry (r)",
-  "lonely_rev"    = "Lonely (r)",
-  "sad_rev"       = "Sad (r)",
-  "stressed_rev"  = "Stressed (r)",
-  "worried_rev"   = "Worried (r)"
-)
-
-wide <- wide %>%
-  mutate(dv = dv_labels[dv])
 
 outcome_order <- c(
   "Affective Wellbeing",
   "Accepted",
-  "Happy",
   "Angry (r)",
+  "Happy",
   "Lonely (r)",
   "Sad (r)",
   "Stressed (r)",
   "Worried (r)"
 )
 
-wide <- wide %>%
-  slice(match(outcome_order, dv))
+mediator_order <- c(
+  "Social Media",
+  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
+)
 
-gt_table <- wide %>%
-  gt(rowname_col = "dv") %>%
-  cols_hide(c(sig_Lag1, sig_Lag2, sig_Lag3)) %>%
-  
-  tab_spanner(label = md("**Lag 1**"), columns = c(EstCI_Lag1, p_fmt_Lag1)) %>%
-  tab_spanner(label = md("**Lag 2**"), columns = c(EstCI_Lag2, p_fmt_Lag2)) %>%
-  tab_spanner(label = md("**Lag 3**"), columns = c(EstCI_Lag3, p_fmt_Lag3)) %>%
-  
-  cols_label(
-    EstCI_Lag1 = "Estimate [95% CI]",
-    p_fmt_Lag1 = md("*p*"),
-    EstCI_Lag2 = "Estimate [95% CI]",
-    p_fmt_Lag2 = md("*p*"),
-    EstCI_Lag3 = "Estimate [95% CI]",
-    p_fmt_Lag3 = md("*p*")
+h4_df <- h4_df %>%
+  mutate(
+    mediator = factor(mediator, levels = mediator_order),
+    outcome = factor(outcome, levels = outcome_order)
   ) %>%
-  
-  cols_align(align = "left", columns = dv) %>%
-  cols_align(
-    align = "center",
-    columns = c(
-      EstCI_Lag1, p_fmt_Lag1,
-      EstCI_Lag2, p_fmt_Lag2,
-      EstCI_Lag3, p_fmt_Lag3
+  filter(!is.na(mediator), !is.na(outcome))
+
+stopifnot(!anyNA(h4_df$mediation_sig))
+
+#############################################
+# Prepare data for gt table
+
+h4_for_gt <- h4_df %>%
+  mutate(
+    acme_ci_prop = sprintf(
+      "%.3f [%.3f, %.3f]\n(%.2f%%)",
+      acme, acme_lwr, acme_upr, prop_mediated * 100
     )
   ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(EstCI_Lag1, p_fmt_Lag1), rows = sig_Lag1)
+  dplyr::select(
+    level, mediator, outcome,
+    acme_ci_prop, mediation_sig
   ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(EstCI_Lag2, p_fmt_Lag2), rows = sig_Lag2)
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(EstCI_Lag3, p_fmt_Lag3), rows = sig_Lag3)
-  ) %>%
-  
-  tab_options(
-    data_row.padding = px(4),
-    table.width = pct(72),
-    table.border.top.style = "solid",
-    table.border.top.width = px(2),
-    table.border.bottom.style = "solid",
-    table.border.bottom.width = px(2),
-    
-    column_labels.border.top.style = "solid",
-    column_labels.border.top.width = px(2),
-    column_labels.border.bottom.style = "solid",
-    column_labels.border.bottom.width = px(2),
-    stub.border.style = "none",
-    table_body.hlines.style = "none",
-    table_body.vlines.style = "none"
-  ) %>%
-  apply_supplementary_table_style(table_width = pct(95))
+  mutate(across(where(is.character),
+                ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
+  arrange(outcome, mediator)
 
-gt_table
+#############################################
+# Create one table with shared weekly and social-media rows
 
-gtsave(gt_table, "Plots/tables_s9.png", vwidth = 2000)
+outcome_columns <- tibble::tribble(
+  ~outcome,                ~key,
+  "Affective Wellbeing",  "affective_wellbeing",
+  "Accepted",             "accepted",
+  "Angry (r)",            "angry",
+  "Happy",                "happy",
+  "Lonely (r)",           "lonely",
+  "Sad (r)",              "sad",
+  "Stressed (r)",         "stressed",
+  "Worried (r)",          "worried"
+)
+
+h4_wide <- h4_for_gt %>%
+  mutate(
+    outcome = as.character(outcome),
+    outcome_key = outcome_columns$key[match(outcome, outcome_columns$outcome)],
+    mediator = factor(mediator, levels = mediator_order)
+  ) %>%
+  dplyr::select(
+    level, mediator,
+    outcome_key, acme_ci_prop, mediation_sig
+  ) %>%
+  pivot_wider(
+    names_from = outcome_key,
+    values_from = c(acme_ci_prop, mediation_sig),
+    names_glue = "{.value}_{outcome_key}"
+  ) %>%
+  mutate(
+    across(starts_with("acme_ci_prop_"), ~ coalesce(.x, "—")),
+    across(starts_with("mediation_sig_"), ~ coalesce(.x, FALSE))
+  ) %>%
+  arrange(mediator)
+
+mediation_cols <- paste0("acme_ci_prop_", outcome_columns$key)
+sig_cols <- paste0("mediation_sig_", outcome_columns$key)
+
+column_labels <- c(
+  stats::setNames(
+    rep(list(html("ACME [95% CI]<br>(Prop. mediated)")), nrow(outcome_columns)),
+    mediation_cols
+  )
+)
+
+h4_gt <- h4_wide %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s16") %>%
+  cols_hide(all_of(sig_cols)) %>%
+  cols_label(.list = column_labels) %>%
+  cols_width(
+    mediator ~ px(210),
+    all_of(mediation_cols) ~ px(400)
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = all_of(mediation_cols)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups()
+  ) %>%
+  tab_style(
+    style = cell_text(indent = px(20)),
+    locations = cells_stub()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub(rows = mediator == "Social Media")
+  )
+
+for (i in seq_len(nrow(outcome_columns))) {
+  mediation_col <- mediation_cols[[i]]
+  sig_col <- sig_cols[[i]]
+
+  h4_gt <- h4_gt %>%
+    tab_spanner(
+      label = md(paste0("**", outcome_columns$outcome[[i]], "**")),
+      columns = all_of(mediation_col)
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(
+        columns = all_of(mediation_col),
+        rows = !!rlang::sym(sig_col)
+      )
+    )
+}
+
+h4_gt <- h4_gt %>%
+  apply_supplementary_table_style(table_width = px(3410)) %>%
+  tab_options(table.font.size = px(34)) %>%
+  opt_css(
+    css = paste0(
+      "#table_s16 th[id^='acme_ci_prop_'], ",
+      "#table_s16 td[headers*='acme_ci_prop_'] { ",
+      "padding-left: 1px !important; ",
+      "padding-right: 10px !important; ",
+      "white-space: pre-line !important; ",
+      "text-align: center !important; }"
+    )
+  )
+
+h4_gt
+
+gtsave(
+  h4_gt,
+  "Plots/tables_s9.png",
+  vwidth = 3710,
+  vheight = 0
+)

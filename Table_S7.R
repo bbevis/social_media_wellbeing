@@ -16,6 +16,7 @@ monthly_wc = read.csv('monthly_results_withcontrols.csv')
 weekly_wc = read.csv('weekly_results_withcontrols.csv')
 momentary_wc = read.csv('momentary_results_withcontrols.csv')
 
+platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
 activities <- c("information","social","productivity","education","entertainment",
                 "creativity","games","shopping","utilities","other","health", "total_activity")
 minutes <- c("sm_minutes")
@@ -43,9 +44,12 @@ h4_df = monthly_wc %>%
         ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
       ) %>%
       mutate(level = 'Momentary')) %>%
-  filter(mediator %in% c(activities, minutes)) %>%
+  filter(mediator %in% c(platforms, minutes)) %>%
   group_by(mediator, level, outcome) %>%
   summarise(
+
+
+
 
     acme = mean(ACME),
     acme_lwr = mean(ACME_CI_lower, na.rm = TRUE),
@@ -59,9 +63,15 @@ h4_df = monthly_wc %>%
     acme_sig = (acme_lwr > 0 | acme_upr < 0) &
       is.finite(acme_lwr) & is.finite(acme_upr),
     mediation_sig = acme_sig,
+    type  = case_when(
+      mediator_raw %in% platforms  ~ "Platform",
+      mediator_raw %in% activities ~ "Activity",
+      TRUE ~ "Rest"
+    ),
     mediator = case_when(
-      mediator_raw == "total_activity" ~ "All Apps",
-      mediator_raw == "sm_minutes" ~ "Social Media",
+      mediator_raw == "total_platform"  ~ "Social Media",
+      mediator_raw == "total_activity"  ~ "All Apps",
+      mediator_raw == "sm_minutes"  ~ "Social Media",
       TRUE ~ mediator_raw
     ),
     outcome = dplyr::recode(
@@ -79,8 +89,10 @@ h4_df = monthly_wc %>%
       "lonely_rev"    = "Lonely (r)",
       "accepted"      = "Accepted"
     ),
-    mediator = tools::toTitleCase(mediator)
+    mediator = tools::toTitleCase(mediator),
+    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
   )
+
 
 outcome_order <- c(
   "Affective Wellbeing",
@@ -96,22 +108,16 @@ outcome_order <- c(
 
 mediator_order <- c(
   "Social Media",
-  "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-  "Other", "Productivity", "Shopping", "Social", "Utilities"
+  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
 )
 
 h4_df = h4_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
   mutate(outcome = factor(outcome, levels = outcome_order)) %>%
-  filter(
-    !is.na(mediator),
-    !is.na(outcome),
-    level != "Momentary",
-    !mediator_raw %in% c("sm_minutes", "social")
-  )
+  filter(!is.na(mediator), !is.na(outcome))
 
 stopifnot(!anyNA(h4_df$mediation_sig))
+
 
 #############################################
 # Prepare data for gt table
@@ -127,12 +133,15 @@ h4_for_gt <- h4_df %>%
     mediator, outcome, level,
     acme_ci_prop, mediation_sig
   ) %>%
+  # Remove leading zeros from estimates, confidence intervals, and proportions.
   mutate(across(where(is.character),
                 ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
   arrange(outcome, mediator, level)
 
+
+
 #############################################
-# Create one table with shared time and app-activity rows
+# Create one table with shared time and social-media rows
 
 level_order <- c("Momentary", "Weekly", "Monthly")
 
@@ -182,7 +191,7 @@ column_labels <- c(
 )
 
 h4_gt <- h4_wide %>%
-  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s7") %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s6") %>%
   cols_hide(all_of(sig_cols)) %>%
   cols_label(.list = column_labels) %>%
   tab_source_note("Bold ACME results indicate a 95% confidence interval excluding zero.") %>%
@@ -204,10 +213,7 @@ h4_gt <- h4_wide %>%
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_stub(
-      rows = mediator == "All Apps" |
-        (mediator == "Social Media" & level != "Momentary")
-    )
+    locations = cells_stub(rows = mediator == "Social Media" & level != "Momentary")
   )
 
 for (i in seq_len(nrow(outcome_columns))) {
@@ -233,8 +239,8 @@ h4_gt <- h4_gt %>%
   tab_options(table.font.size = px(34)) %>%
   opt_css(
     css = paste0(
-      "#table_s7 th[id^='acme_ci_prop_'], ",
-      "#table_s7 td[headers*='acme_ci_prop_'] { ",
+      "#table_s6 th[id^='acme_ci_prop_'], ",
+      "#table_s6 td[headers*='acme_ci_prop_'] { ",
       "padding-left: 1px !important; ",
       "padding-right: 10px !important; ",
       "white-space: pre-line !important; ",

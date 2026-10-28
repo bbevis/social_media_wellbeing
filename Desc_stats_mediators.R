@@ -102,11 +102,61 @@ mediation_order <- c(
   "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
 )
 
+# Installation status is assessed over all four reports within each semester.
+# Use original responses: processed no-app flags also recode unknowns to zero.
+installation_raw <- map_dfr(1:2, function(term) {
+  apps <- read.csv(
+    paste0("Data/coco_ut", term, "_appusage_survey.csv"),
+    sep = ";"
+  )
+  health <- read.csv(
+    paste0("Data/coco_ut", term, "_appusage_survey_health.csv")
+  )
+
+  apps %>%
+    left_join(health, by = "id") %>%
+    filter(id %in% weekly_df$id) %>%
+    mutate(semester = term)
+})
+
+stopifnot(!anyDuplicated(installation_raw[c("id", "semester")]))
+
+installation_pct <- map_dfr(
+  setdiff(weekly_mediators, "total_activity"),
+  function(v) {
+    status <- sapply(1:4, function(w) {
+      no_app <- installation_raw[[paste0("no_", v, "_w", w)]]
+      hours <- installation_raw[[paste0("hours_", v, "_w", w)]]
+      minutes <- installation_raw[[paste0("minutes_", v, "_w", w)]]
+
+      case_when(
+        no_app == 1 ~ 0L,
+        !is.na(hours) | !is.na(minutes) ~ 1L,
+        TRUE ~ NA_integer_
+      )
+    })
+
+    known_all_four <- rowSums(is.na(status)) == 0
+    installed_all_four <- rowSums(status == 1L, na.rm = TRUE) == 4
+
+    tibble(
+      Variable = v,
+      `With App/Category (%)` = if (sum(known_all_four) > 0) {
+        round(
+          100 * sum(known_all_four & installed_all_four) /
+            sum(known_all_four),
+          1
+        )
+      } else NA_real_
+    )
+  }
+)
+
 weekly_desc <- make_desc_stats(weekly_df, "Weekly",
                                weekly_mediators,
                                id_col = "id",
                                row_filter_col = "ema_50_exclude") %>%
-  mutate(`With App/Category (%)` = if_else(Variable == "total_activity", NA_real_, round(100 * `N participants` / n_distinct(weekly_df$id), 1)))
+  left_join(installation_pct, by = "Variable")
 
 momentary_desc <- make_desc_stats(momentary_df, "Momentary",
                                   momentary_mediators,

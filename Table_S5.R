@@ -37,7 +37,7 @@ h3_df <- monthly_wc %>%
     momentary_wc %>%
       dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
       mutate(level = 'Momentary')) %>%
-  filter(mediator %in% c(activities, platforms, minutes)) %>%
+  filter(mediator %in% c(platforms, minutes)) %>%
   group_by(mediator, level, outcome) %>%
   summarise(
     m   = mean(path_b),
@@ -95,23 +95,13 @@ outcome_order <- c(
 
 mediator_order <- c(
   "Social Media",
-  "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-  "Other", "Productivity", "Shopping", "Social", "Utilities",
-  "Social Media",
   "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
 )
-mediator_order <- unique(mediator_order)
 
-h3_df = h3_df %>%
+h3_df <- h3_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
   mutate(outcome = factor(outcome, levels = outcome_order)) %>%
-  filter(!mediator_raw %in% c(
-    "total_platform", "sm_minutes",
-    "facebook", "instagram", "reddit", "snapchat", "tiktok", "twitter", "youtube"
-  )) %>%
-  filter(level != "Momentary") %>%
-  filter(!(mediator_raw == "social" & level %in% c("Weekly", "Monthly")))
+  filter(!is.na(mediator), !is.na(outcome))
 
 
 #############################################
@@ -123,15 +113,14 @@ h3_for_gt <- h3_df %>%
     p_fmt  = sprintf("%.3f", p),
     sig = p <= 0.05
   ) %>%
-  dplyr::select(mediator_raw, mediator, outcome, level, est_ci, p_fmt, sig) %>%
+  dplyr::select(mediator, outcome, level, est_ci, p_fmt, sig) %>%
   # Remove leading zeros everywhere (ACME + CI + p-values)
   mutate(across(where(is.character),
                 ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
   arrange(outcome, mediator, level)
 
-
 #############################################
-# Create one table with shared time and app-activity rows
+# Create one table with shared time and social-media rows
 
 level_order <- c("Momentary", "Weekly", "Monthly")
 
@@ -178,7 +167,7 @@ column_labels <- c(
 )
 
 h3_gt <- h3_wide %>%
-  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s5") %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s4") %>%
   cols_hide(all_of(sig_cols)) %>%
   cols_label(.list = column_labels) %>%
   cols_width(
@@ -197,7 +186,7 @@ h3_gt <- h3_wide %>%
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_stub(rows = mediator == "All Apps")
+    locations = cells_stub(rows = mediator == "Social Media" & level != "Momentary")
   )
 
 for (i in seq_len(nrow(outcome_columns))) {
@@ -224,8 +213,8 @@ h3_gt <- h3_gt %>%
   tab_options(table.font.size = px(34)) %>%
   opt_css(
     css = paste0(
-      "#table_s5 th[id^='p_fmt_'], ",
-      "#table_s5 td[headers*='p_fmt_'] { ",
+      "#table_s4 th[id^='p_fmt_'], ",
+      "#table_s4 td[headers*='p_fmt_'] { ",
       "padding-left: 1px !important; ",
       "padding-right: 29px !important; ",
       "text-align: center !important; }"

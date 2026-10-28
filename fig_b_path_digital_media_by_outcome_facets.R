@@ -34,7 +34,7 @@ outcome_order <- c(
 )
 
 mediator_order <- c(
-  "All Apps",
+  "Overall Screentime",
   "Creativity",
   "Education",
   "Entertainment",
@@ -77,7 +77,7 @@ base_df <- bind_rows(
   mutate(
     mediator = recode(
       mediator,
-      "total_activity" = "All Apps"
+      "total_activity" = "Overall Screentime"
     ),
     mediator = tools::toTitleCase(mediator),
     outcome = recode(

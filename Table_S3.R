@@ -1,6 +1,6 @@
 #############################################
 #
-# H2 results table - Political Orientation on App Category Use
+# H2 results table - Political Orientation on Social/Digital Media Use
 #
 #############################################
 
@@ -52,7 +52,7 @@ h2_df <- path_a_res %>%
     mediator = tools::toTitleCase(mediator),
     mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
   )
-
+    
 
 mediator_order <- c(
   "Social Media",
@@ -66,19 +66,16 @@ mediator_order <- unique(mediator_order)
 
 h2_df <- h2_df %>%
   mutate(mediator = factor(mediator, levels = mediator_order)) %>%
-  filter(!mediator_raw %in% c(
-    "total_platform", "sm_minutes",
-    "facebook", "instagram", "reddit", "snapchat", "tiktok", "twitter", "youtube"
-  )) %>%
-  filter(level != "Momentary") %>%
-  filter(!(mediator_raw == "social" & level %in% c("Weekly", "Monthly")))
+  filter(!mediator%in%c("All Apps",
+                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
+                        "Other", "Productivity", "Shopping", "Social", "Utilities"))
 
 #############################################
 # Prepare data for gt table
 
 h2_for_gt <- h2_df %>%
   mutate(
-    level = factor(level, levels = c("Weekly", "Monthly")),
+    level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
     p_fmt  = sprintf("%.3f", p), # Format p value
     sig = p <= 0.05,
@@ -108,7 +105,7 @@ h2_gt <- h2_for_gt %>%
   tab_style(
     style = list(
       cell_text(weight = "bold")),
-    locations = cells_row_groups(groups = c("Weekly", "Monthly"))
+    locations = cells_row_groups(groups = c("Momentary", "Weekly", "Monthly"))
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
@@ -116,7 +113,8 @@ h2_gt <- h2_for_gt %>%
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_stub(rows = mediator == "All Apps")
+    locations = cells_stub(rows = mediator == "All Apps" |
+                             (mediator == "Social Media" & level != "Momentary"))
   ) %>%
   tab_options(
     table.border.top.style    = "none",

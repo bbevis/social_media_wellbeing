@@ -54,15 +54,15 @@ outcome_shape_vals <- c(
 color_palette <- c(
   "Overall Screentime" = "#661100",
   "Creativity" = "#117733",
-  "Education" = "#F0E442",
+  "Education" = "#B38F00",
   "Entertainment" = "#AA4499",
   "Games" = "#999933",
-  "Health" = "#CC6677",
+  "Health" = "#009E73",
   "Information" = "#332288",
-  "Other" = "#882255",
+  "Other" = "#0072B2",
   "Productivity" = "#88CCEE",
   "Shopping" = "#DDCC77",
-  "Utilities" = "#E69F00",
+  "Utilities" = "#D62728",
   "n.s." = "grey85"
 )
 

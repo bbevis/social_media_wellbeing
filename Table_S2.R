@@ -1,6 +1,6 @@
 #############################################
 #
-# H2 results table - Political Orientation on Social/Digital Media Use
+# H1 results table - Political orientation on Wellbeing
 #
 #############################################
 
@@ -15,65 +15,61 @@ library(webshot2)
 #############################################
 # Load data
 
-path_a_res <- read.csv("study1_path_a_results.csv")
+monthly_wc = read.csv('monthly_results_withcontrols.csv')
+weekly_wc = read.csv('weekly_results_withcontrols.csv')
+momentary_wc = read.csv('momentary_results_withcontrols.csv')
 
-platforms  <- c("facebook","twitter","tiktok","instagram","youtube","reddit","snapchat", "total_platform")
-activities <- c("information","social","productivity","education","entertainment",
-                "creativity","games","shopping","utilities","other","health", "total_activity")
-minutes <- c("sm_minutes")
 
 #############################################
-# H2 table: combine and summarise
+# H1 table: combine and summarise
 
-h2_df <- path_a_res %>%
-  filter(mediator %in% c(platforms, activities, minutes)) %>%
-  transmute(
-    mediator,
-    level,
-    m = estimate,
-    lwr = ci_low,
-    upr = ci_high,
-    p
+h1_df = monthly_wc %>%
+  filter(mediator%in%c('total_activity')) %>%
+  dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
+  mutate(level = 'Monthly') %>%
+  bind_rows(
+    weekly_wc %>%
+      filter(mediator%in%c('total_activity')) %>%
+      dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
+      mutate(level = 'Weekly')) %>%
+  bind_rows(
+    momentary_wc %>%
+      dplyr::select(outcome, path_c, path_c_CI_lower, path_c_CI_upper, path_c_p) %>%
+      mutate(level = 'Momentary')) %>%
+  group_by(outcome,level) %>%
+  summarise(
+    m   = mean(path_c),
+    lwr = mean(path_c_CI_lower, na.rm = TRUE),
+    upr = mean(path_c_CI_upper, na.rm = TRUE),
+    p   = mean(path_c_p),
+    .groups = "drop"
   ) %>%
+  mutate(outcome = dplyr::recode(outcome,
+                          "awb_momentary" = "Affective Wellbeing",
+                          "awb_week"      = "Affective Wellbeing",
+                          "awb_t2"        = "Affective Wellbeing",
+                          "swls_t2"       = "Life Satisfaction",
+                          "uls_t2"        = "Lonely (r)",
+                          "angry_rev"         = "Angry (r)",
+                          "worried_rev"       = "Worried (r)",
+                          "happy"         = "Happy",
+                          "sad_rev"           = "Sad (r)",
+                          "stressed_rev"      = "Stressed (r)",
+                          "lonely_rev"        = "Lonely (r)",
+                          "accepted"      = "Accepted"
+  )) %>%
+  # Make "Affective Wellbeing" come first, followed by alphabetical ordering
   mutate(
-    mediator_raw = mediator,
-    level = factor(level, levels = c("Momentary","Weekly","Monthly")),
-    type  = case_when(
-      mediator %in% platforms  ~ "Platform",
-      mediator %in% activities ~ "Activity",
-      TRUE ~ "Rest"
-    ),
-    mediator = case_when(
-      mediator == "total_platform"  ~ "Social Media",
-      mediator == "total_activity"  ~ "All Apps",
-      mediator == "sm_minutes"  ~ "Social Media",
-      TRUE ~ mediator
-    ),
-    mediator = tools::toTitleCase(mediator),
-    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
+    outcome = factor(
+      outcome,
+      levels = c("Affective Wellbeing", sort(setdiff(unique(outcome), "Affective Wellbeing")))
+    )
   )
-    
-
-mediator_order <- c(
-  "Social Media",
-  "All Apps",
-  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-  "Other", "Productivity", "Shopping", "Social", "Utilities",
-  "Social Media",
-  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
-)
-mediator_order <- unique(mediator_order)
-
-h2_df <- h2_df %>%
-  mutate(mediator = factor(mediator, levels = mediator_order)) %>%
-  filter(!mediator%in%c("All Apps",
-                        "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
-                        "Other", "Productivity", "Shopping", "Social", "Utilities"))
-
+  
 #############################################
 # Prepare data for gt table
 
-h2_for_gt <- h2_df %>%
+h1_for_gt <- h1_df %>%
   mutate(
     level = factor(level, levels = c("Momentary", "Weekly", "Monthly")),
     est_ci = sprintf("%.3f [%.3f, %.3f]", m, lwr, upr), # Format estimate and CI
@@ -82,15 +78,15 @@ h2_for_gt <- h2_df %>%
     est_ci = gsub("0\\.", ".", est_ci),
     p_fmt  = gsub("0\\.", ".", p_fmt)
   ) %>%
-  dplyr::select(mediator_raw, mediator, level, est_ci, p_fmt, sig) %>%
-  arrange(level, mediator)
+  dplyr::select(outcome, level, est_ci, p_fmt, sig) %>%
+  arrange(outcome, level)
 
 #############################################
 # Create gt table
 
-h2_gt <- h2_for_gt %>%
-  gt(rowname_col = "mediator", groupname_col = "level") %>%
-  cols_hide(c(mediator_raw, sig)) %>%
+h1_gt <- h1_for_gt %>%
+  gt(rowname_col = "outcome", groupname_col = "level") %>%
+  cols_hide(sig) %>%
   cols_label(
     est_ci = "Estimate [95% CI]",
     p_fmt  = md("*p*")
@@ -110,11 +106,6 @@ h2_gt <- h2_for_gt %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_stub(rows = mediator == "All Apps" |
-                             (mediator == "Social Media" & level != "Momentary"))
   ) %>%
   tab_options(
     table.border.top.style    = "none",
@@ -143,6 +134,6 @@ h2_gt <- h2_for_gt %>%
   ) %>%
   apply_supplementary_table_style()
 
-h2_gt
+h1_gt
 
-gtsave(h2_gt, "Plots/tables_s2.png", vwidth = SUPPLEMENTARY_TABLE_VWIDTH, vheight = 0)
+gtsave(h1_gt, "Plots/tables_s2.png", vwidth = SUPPLEMENTARY_TABLE_VWIDTH, vheight = 0)

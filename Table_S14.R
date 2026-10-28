@@ -1,180 +1,62 @@
 #############################################
-#
-#       Table S14
-#       Social Media Use and Wellbeing
-#
+# Table S14: Political orientation and wellbeing
+# Run from Analysis/. Writes only Plots/tables_s14.png.
+# Full-sample results; platforms in alphabetical order. No bootstrap is rerun.
 #############################################
-
-library(dplyr)
-library(tidyr)
-library(gt)
-library(magick)
-
-source("supplementary_table_style.R")
-
-#############################################
-# Load data
-
-anes_res <- read.csv("anes_w3_mediation_results.csv")
-
-#############################################
-# Format helpers
-
-format_decimal <- function(x, digits = 3) {
-  out <- sprintf(paste0("%.", digits, "f"), x)
-  gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", out, perl = TRUE)
+suppressPackageStartupMessages(library(survey))
+d <- read.csv('anes_w3.csv')
+ys <- c(loneliness='Loneliness (r)',anhedonia='Anhedonia (r)',depression='Depression (r)')
+ms <- c(facebook_frequency='Facebook',instagram_frequency='Instagram',reddit_frequency='Reddit',tiktok_frequency='TikTok',twitter_frequency='Twitter',youtube_frequency='YouTube')
+cs <- c('political_orientation','age','gender','race_ethnicity','income','education','w3weight')
+fmt <- function(x,k=3) sub('^(-?)0\\.','\\1.',sprintf(paste0('%.',k,'f'),x))
+fp <- function(p) ifelse(p<.001,'&lt;.001',fmt(p))
+fci <- function(e,l,h,k=3) paste0(fmt(e,k),' [',fmt(l,k),', ',fmt(h,k),']')
+td <- function(x,sig=FALSE) paste0('<td',ifelse(sig,' class="sig"',''),'>',x,'</td>')
+tr <- function(label,cells) paste0('<tr><th class="stub">',label,'</th>',paste(cells,collapse=''),'</tr>')
+headrow <- function(headers) paste0('<tr>',paste0('<th>',headers,'</th>',collapse=''),'</tr>')
+css <- 'body{margin:0;color:#222;background:#fff;font-family:Times,"Times New Roman",serif}.sheet{padding:28px 30px;box-sizing:border-box}table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:25px;border-top:2px solid #333;border-bottom:2px solid #333}thead th{font-weight:bold;padding:15px 10px;line-height:1.2;border-bottom:1.5px solid #333;text-align:center}td{padding:13px 12px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}.stub{padding:13px 14px;text-align:left;font-weight:normal}.sig{font-weight:bold}.platform th{text-align:left;font-weight:bold;padding:20px 14px 6px;font-size:26px}.freqhead th{padding:14px 6px;border-bottom:1px solid #666;text-align:center;line-height:1.2;font-size:23px}.spacer td{height:15px;padding:0}.sub{font-size:22px;font-weight:normal}.btable{font-size:23px}.btable td{padding:11px 5px}.btable .stub{padding:11px 10px 11px 25px}.acme td{padding:18px 14px;line-height:1.45}'
+save_table <- function(body, width, filename) {
+  html_file <- tempfile(fileext = ".html")
+  renderer <- tempfile(fileext = ".cjs")
+  on.exit(unlink(c(html_file, renderer)), add = TRUE)
+  writeLines(paste0('<!doctype html><meta charset="utf-8"><style>', css,
+    '</style><div class="sheet" style="width:', width, 'px">', body, '</div>'), html_file)
+  if (requireNamespace("webshot2", quietly = TRUE)) {
+    webshot2::webshot(html_file, file = filename, selector = ".sheet",
+                     vwidth = width, zoom = 2)
+  } else {
+    # Local fallback when webshot2 is unavailable; no additional output files.
+    runtime <- file.path(path.expand("~"), ".cache/codex-runtimes/codex-primary-runtime/dependencies/node")
+    node <- file.path(runtime, "bin/node")
+    module <- file.path(runtime, "node_modules/playwright")
+    chrome <- "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    if (!file.exists(node) || !dir.exists(module) || !file.exists(chrome))
+      stop("Install webshot2 to render the table PNG.")
+    writeLines(c(
+      "const {chromium}=require(process.argv[2]);",
+      "(async()=>{const b=await chromium.launch({executablePath:process.argv[3],headless:true});",
+      "try{const p=await b.newPage({viewport:{width:Number(process.argv[6]),height:1600},deviceScaleFactor:2});",
+      "await p.goto(require('url').pathToFileURL(process.argv[4]).href);await p.evaluate(()=>document.fonts.ready);",
+      "const clipped=await p.locator('td,th').evaluateAll(es=>es.some(e=>e.scrollWidth>e.clientWidth+2));",
+      "if(clipped)throw Error('Table contains clipped cells');",
+      "await p.locator('.sheet').screenshot({path:process.argv[5]});}finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});"
+    ), renderer)
+    status <- system2(node, args = vapply(c(renderer, module, chrome,
+      normalizePath(html_file), file.path(getwd(), filename), as.character(width)), shQuote, ""))
+    if (status != 0) stop("Table rendering failed")
+  }
+  message("Saved ", filename)
 }
+getdata <- function(vars){ d[complete.cases(d[,unique(c(vars,cs))]) & is.finite(d$w3weight) & d$w3weight>0,,drop=FALSE] }
 
-format_p <- function(p) {
-  case_when(
-    is.na(p) ~ "",
-    p < .001 ~ "<.001",
-    TRUE ~ format_decimal(p, 3)
-  )
+# Standalone H1: use everyone with outcome, PO, covariates and positive weight.
+rows <- c()
+for(y in names(ys)){
+ md <- getdata(y);md$outcome_z <- as.numeric(scale(md[[y]]))
+ design <- svydesign(ids=~1,weights=~w3weight,data=md)
+ fit <- svyglm(outcome_z ~ political_orientation+age+gender+race_ethnicity+income+education,design=design)
+ co <- summary(fit)$coefficients['political_orientation',];ci <- confint(fit)['political_orientation',]
+ rows <- c(rows,tr(ys[[y]],c(td(fci(co[1],ci[1],ci[2]),co[4]<.05),td(fp(co[4]),co[4]<.05))))
 }
+save_table(paste0('<table><colgroup><col style="width:40%"><col style="width:42%"><col></colgroup><thead>',headrow(c('','Estimate [95% CI]','<i>p</i>')),'</thead><tbody>',paste(rows,collapse=''),'</tbody></table>'),1050, "Plots/tables_s14.png")
 
-format_est_ci <- function(est, low, high) {
-  paste0(
-    format_decimal(est, 3),
-    " [",
-    format_decimal(low, 3),
-    ", ",
-    format_decimal(high, 3),
-    "]"
-  )
-}
-
-#############################################
-# Prepare data
-
-outcome_order <- c(
-  "Loneliness (r)",
-  "Anhedonia (r)",
-  "Depression (r)"
-)
-
-mediator_order <- c(
-  "Social Media",
-  "Facebook",
-  "Instagram",
-  "Reddit",
-  "TikTok",
-  "Twitter",
-  "YouTube"
-)
-
-table_df <- anes_res %>%
-  filter(
-    sample == "all",
-    model_type == "mediation",
-    outcome %in% c("loneliness", "anhedonia", "depression")
-  ) %>%
-  mutate(
-    outcome = dplyr::recode(
-      outcome,
-      "loneliness" = "Loneliness (r)",
-      "anhedonia" = "Anhedonia (r)",
-      "depression" = "Depression (r)"
-    ),
-    mediator = dplyr::recode(
-      mediator,
-      "facebook_frequency" = "Facebook",
-      "instagram_frequency" = "Instagram",
-      "reddit_frequency" = "Reddit",
-      "tiktok_frequency" = "TikTok",
-      "youtube_frequency" = "YouTube",
-      "twitter_frequency" = "Twitter",
-      "total_platform_frequency" = "Social Media"
-    ),
-    outcome = factor(outcome, levels = outcome_order),
-    mediator = factor(mediator, levels = mediator_order),
-    est_ci = format_est_ci(b_path_est, b_path_ci_low, b_path_ci_high),
-    p_fmt = format_p(b_path_p),
-    sig = b_path_p <= 0.05
-  ) %>%
-  dplyr::select(mediator, outcome, est_ci, p_fmt, sig) %>%
-  arrange(mediator, outcome)
-
-#############################################
-# Add platform header rows
-
-headers <- table_df %>%
-  distinct(mediator) %>%
-  mutate(
-    outcome = NA,
-    est_ci = "",
-    p_fmt = "",
-    sig = FALSE,
-    row_type = "platform"
-  )
-
-rows <- table_df %>%
-  mutate(row_type = "outcome")
-
-table_for_gt <- bind_rows(headers, rows) %>%
-  mutate(row_type = factor(row_type, levels = c("platform", "outcome"))) %>%
-  arrange(mediator, row_type, outcome) %>%
-  mutate(
-    stub = ifelse(
-      row_type == "platform",
-      as.character(mediator),
-      as.character(outcome)
-    ),
-    across(
-      c(est_ci, p_fmt),
-      ~ ifelse(is.na(.x), "", .x)
-    ),
-    sig = ifelse(is.na(sig), FALSE, sig)
-  ) %>%
-  dplyr::select(
-    mediator,
-    outcome,
-    row_type,
-    stub,
-    est_ci,
-    p_fmt,
-    sig
-  )
-
-#############################################
-# Create gt table
-
-table_s23 <- table_for_gt %>%
-  gt(rowname_col = "stub") %>%
-  cols_hide(c(mediator, outcome, row_type, sig)) %>%
-  cols_label(
-    est_ci = "Estimate [95% CI]",
-    p_fmt = md("*p*")
-  ) %>%
-  cols_align("center") %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(est_ci, p_fmt), rows = sig)
-  ) %>%
-  tab_style(
-    style = cell_text(align = "left"),
-    locations = cells_stub()
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold", indent = px(20)),
-    locations = cells_stub(rows = row_type == "platform")
-  ) %>%
-  tab_style(
-    style = cell_text(indent = px(40)),
-    locations = cells_stub(rows = row_type == "outcome")
-  ) %>%
-  apply_supplementary_table_style()
-
-#############################################
-# Save table
-
-if (!requireNamespace("webshot2", quietly = TRUE)) {
-  stop("The webshot2 package is required to save gt tables as PNG files.")
-}
-
-gtsave(
-  table_s23,
-  "Plots/tables_s14.png",
-  vwidth = SUPPLEMENTARY_TABLE_VWIDTH,
-  vheight = 0
-)

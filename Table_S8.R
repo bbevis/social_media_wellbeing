@@ -1,265 +1,252 @@
 #############################################
-# Lagged analysis using averaged time-of-day data
+#
+# H4 results table - Mediation
+#
 #############################################
 
 library(dplyr)
-library(lme4)
-library(stringr)
 library(gt)
 source("supplementary_table_style.R")
 library(tidyr)
 
+#############################################
 # Load data
-momentary_df <- read.csv("momentary.csv")
 
+monthly_wc = read.csv('monthly_results_withcontrols.csv')
+weekly_wc = read.csv('weekly_results_withcontrols.csv')
+momentary_wc = read.csv('momentary_results_withcontrols.csv')
 
-# Order time-of-day properly
-momentary_df$time_of_day <- factor(
-  momentary_df$time_of_day,
-  levels = c("morning", "afternoon", "evening", "night"),
-  ordered = TRUE
-)
+activities <- c("information","social","productivity","education","entertainment",
+                "creativity","games","shopping","utilities","other","health", "total_activity")
+minutes <- c("sm_minutes")
 
-# Well-being DVs
-dv_vars <- c(
-  "awb_momentary", "angry_rev", "worried_rev", "happy",
-  "sad_rev", "stressed_rev", "lonely_rev", "accepted"
-)
+#############################################
+# H4 table
 
-
-# Aggregate to one row per person × day × time_of_day
-agg_df <- momentary_df %>%
-  group_by(id, calendar_date, time_of_day) %>%
-  summarise(
-    sm_mean = mean(sm_minutes, na.rm = TRUE),
-    across(all_of(dv_vars), ~ mean(.x, na.rm = TRUE)),
-    term = first(term),
-    week = first(week),
-    surveys_per_id = first(surveys_per_id),
-    post_election = first(post_election),
-    .groups = "drop"
-  )
-
-
-# Create lag variables (lag 1, lag 2, lag 3)
-agg_df <- agg_df %>%
-  arrange(id, calendar_date, time_of_day) %>%
-  group_by(id, calendar_date) %>%
-  mutate(
-    across(all_of(dv_vars), ~ lead(.x, 1), .names = "{.col}_lag1"),
-    across(all_of(dv_vars), ~ lead(.x, 2), .names = "{.col}_lag2"),
-    across(all_of(dv_vars), ~ lead(.x, 3), .names = "{.col}_lag3"),
+h4_df = monthly_wc %>%
+  dplyr::select(
+    mediator, outcome,
+    ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
   ) %>%
-  ungroup()
+  mutate(level = 'Monthly') %>%
+  bind_rows(
+    weekly_wc %>%
+      dplyr::select(
+        mediator, outcome,
+        ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
+      ) %>%
+      mutate(level = 'Weekly')) %>%
+  bind_rows(
+    momentary_wc %>%
+      dplyr::select(
+        mediator, outcome,
+        ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
+      ) %>%
+      mutate(level = 'Momentary')) %>%
+  filter(mediator %in% c(activities, minutes)) %>%
+  group_by(mediator, level, outcome) %>%
+  summarise(
 
-# Remove rows where next period(s) do not exist
-agg_df <- agg_df %>% filter(!is.na(awb_momentary_lag1))
-
-models <- list()
-lags <- c("lag1", "lag2", "lag3")
-
-for (dv in dv_vars) {
-  for (lag in lags) {
-    
-    # DV at future time
-    dv_future <- paste0(dv, "_", lag)
-    
-    formula_str <- paste0(
-      dv_future, " ~ sm_mean + ", dv,
-      " + term + week + surveys_per_id + post_election + (1 | id)"
-    )
-    
-    model_name <- paste0(dv, "_", lag)
-    models[[model_name]] <- lmer(as.formula(formula_str), data = agg_df)
-  }
-}
-
-# Extract model results into CSV
-
-results_list <- lapply(names(models), function(dv) {
-  
-  m <- models[[dv]]
-  s <- summary(m)
-  coefs <- s$coefficients
-
-  pvals <- 2 * (1 - pnorm(abs(coefs[, "t value"])))
-  
-  ci <- confint(m, method = "Wald")
-  
-  ci_fixed <- ci[rownames(coefs), , drop = FALSE]
-  
-  data.frame(
-    model     = dv,
-    term      = rownames(coefs),
-    estimate  = coefs[, "Estimate"],
-    std_error = coefs[, "Std. Error"],
-    t_value   = coefs[, "t value"],
-    p_value   = pvals,
-    ci_lower  = ci_fixed[, 1],
-    ci_upper  = ci_fixed[, 2],
-    n_obs     = nobs(m),
-    stringsAsFactors = FALSE
-  )
-})
-
-results_df <- do.call(rbind, results_list)
-
-
-write.csv(results_df, "lagged_results.csv", row.names = FALSE)
-
-##################################################
-# gt table
-
-results_df <- read.csv("lagged_results.csv")
-
-dv_labels <- c(
-  "awb_momentary" = "Affective Wellbeing",
-  "angry_rev"     = "Angry (r)",
-  "worried_rev"   = "Worried (r)",
-  "happy"         = "Happy",
-  "sad_rev"       = "Sad (r)",
-  "stressed_rev"  = "Stressed (r)",
-  "lonely_rev"    = "Lonely (r)",
-  "accepted"      = "Accepted"
-)
-
-
-# Filter for sm_mean effects only and prepare formatting
-
-sm <- results_df %>%
-  filter(term == "sm_mean") %>%
+    acme = mean(ACME),
+    acme_lwr = mean(ACME_CI_lower, na.rm = TRUE),
+    acme_upr = mean(ACME_CI_upper, na.rm = TRUE),
+    prop_mediated = mean(prop_mediated),
+    .groups = "drop"
+  ) %>%
+  rename(mediator_raw = mediator) %>%
   mutate(
-    dv = sub("_lag[0-9]+$", "", model),   # clean DV name
-    lag_num = as.numeric(sub(".*_lag", "", model))
-  )
-
-
-
-# Format estimate, CI, p-values, remove leading zeros
-
-sm <- sm %>%
-  mutate(
-    est_fmt   = sprintf("%.4f", estimate),
-    lower_fmt = sprintf("%.4f", ci_lower),
-    upper_fmt = sprintf("%.4f", ci_upper),
-    p_fmt     = sprintf("%.3f", p_value),
-    
-    # Remove leading zeros
-    est_fmt   = str_replace(est_fmt,   "(?<=^|-)0\\.", "."),
-    lower_fmt = str_replace(lower_fmt, "(?<=^|-)0\\.", "."),
-    upper_fmt = str_replace(upper_fmt, "(?<=^|-)0\\.", "."),
-    p_fmt     = str_replace(p_fmt,     "(?<=^|-)0\\.", "."),
-    
-    # final formatted columns
-    EstCI = paste0(est_fmt, " [", lower_fmt, ", ", upper_fmt, "]"),
-    p_val = paste0(p_fmt),
-    sig = p_value <= 0.05
+    level = factor(level, levels = c("Momentary","Weekly","Monthly")),
+    acme_sig = (acme_lwr > 0 | acme_upr < 0) &
+      is.finite(acme_lwr) & is.finite(acme_upr),
+    mediation_sig = acme_sig,
+    mediator = case_when(
+      mediator_raw == "total_activity" ~ "All Apps",
+      mediator_raw == "sm_minutes" ~ "Social Media",
+      TRUE ~ mediator_raw
+    ),
+    outcome = dplyr::recode(
+      outcome,
+      "awb_momentary" = "Affective Wellbeing",
+      "awb_t2"        = "Affective Wellbeing",
+      "awb_week"      = "Affective Wellbeing",
+      "swls_t2"       = "Life Satisfaction",
+      "uls_t2"        = "Lonely (r)",
+      "angry_rev"     = "Angry (r)",
+      "worried_rev"   = "Worried (r)",
+      "happy"         = "Happy",
+      "sad_rev"       = "Sad (r)",
+      "stressed_rev"  = "Stressed (r)",
+      "lonely_rev"    = "Lonely (r)",
+      "accepted"      = "Accepted"
+    ),
+    mediator = tools::toTitleCase(mediator)
   )
 
 outcome_order <- c(
   "Affective Wellbeing",
   "Accepted",
-  "Happy",
   "Angry (r)",
+  "Happy",
+  "Life Satisfaction",
   "Lonely (r)",
   "Sad (r)",
   "Stressed (r)",
   "Worried (r)"
 )
 
+mediator_order <- c(
+  "Social Media",
+  "All Apps",
+  "Creativity", "Education", "Entertainment", "Games", "Health", "Information",
+  "Other", "Productivity", "Shopping", "Social", "Utilities"
+)
 
-# Convert to wide format with Estimate + p per lag
+h4_df = h4_df %>%
+  mutate(mediator = factor(mediator, levels = mediator_order)) %>%
+  mutate(outcome = factor(outcome, levels = outcome_order)) %>%
+  filter(
+    !is.na(mediator),
+    !is.na(outcome),
+    level != "Momentary",
+    !mediator_raw %in% c("sm_minutes", "social")
+  )
 
-sm_wide <- sm %>%
-  select(dv, lag_num, EstCI, p_val, sig) %>%
-  pivot_wider(
-    names_from = lag_num,
-    values_from = c(EstCI, p_val, sig),
-    names_glue = "{.value}_Lag{lag_num}"
-  ) %>%
-  mutate(dv = dv_labels[dv]) %>%   # Apply readable DV names
-  select(
-    dv,
-    EstCI_Lag1, p_val_Lag1,
-    EstCI_Lag2, p_val_Lag2,
-    EstCI_Lag3, p_val_Lag3,
-    sig_Lag1, sig_Lag2, sig_Lag3
-  ) %>%
-  # Apply ordering you requested
-  mutate(dv = factor(dv, levels = outcome_order)) %>%
-  arrange(dv)
+stopifnot(!anyNA(h4_df$mediation_sig))
 
+#############################################
+# Prepare data for gt table
 
-gt_table <- sm_wide %>%
-  gt(rowname_col = "dv") %>%
-  cols_hide(c(sig_Lag1, sig_Lag2, sig_Lag3)) %>%
-  cols_label(
-    EstCI_Lag1 = "Estimate [95% CI]",
-    p_val_Lag1 = md("*p*"),
-    EstCI_Lag2 = "Estimate [95% CI]",
-    p_val_Lag2 = md("*p*"),
-    EstCI_Lag3 = "Estimate [95% CI]",
-    p_val_Lag3 = md("*p*")
-  )%>%
-  tab_spanner("Lag 1", columns = c(EstCI_Lag1, p_val_Lag1)) %>%
-  tab_spanner("Lag 2", columns = c(EstCI_Lag2, p_val_Lag2)) %>%
-  tab_spanner("Lag 3", columns = c(EstCI_Lag3, p_val_Lag3)) %>%
-  cols_align(
-    align = "center",
-    columns = c(
-      EstCI_Lag1, p_val_Lag1,
-      EstCI_Lag2, p_val_Lag2,
-      EstCI_Lag3, p_val_Lag3
+h4_for_gt <- h4_df %>%
+  mutate(
+    acme_ci_prop = sprintf(
+      "%.3f [%.3f, %.3f]\n(%.2f%%)",
+      acme, acme_lwr, acme_upr, prop_mediated * 100
     )
   ) %>%
+  dplyr::select(
+    mediator, outcome, level,
+    acme_ci_prop, mediation_sig
+  ) %>%
+  mutate(across(where(is.character),
+                ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
+  arrange(outcome, mediator, level)
+
+#############################################
+# Create one table with shared time and app-activity rows
+
+level_order <- c("Momentary", "Weekly", "Monthly")
+
+outcome_columns <- tibble::tribble(
+  ~outcome,                ~key,
+  "Affective Wellbeing",  "affective_wellbeing",
+  "Accepted",             "accepted",
+  "Angry (r)",            "angry",
+  "Happy",                "happy",
+  "Life Satisfaction",    "life_satisfaction",
+  "Lonely (r)",           "lonely",
+  "Sad (r)",              "sad",
+  "Stressed (r)",         "stressed",
+  "Worried (r)",          "worried"
+)
+
+h4_wide <- h4_for_gt %>%
+  mutate(
+    outcome = as.character(outcome),
+    outcome_key = outcome_columns$key[match(outcome, outcome_columns$outcome)],
+    mediator = factor(mediator, levels = mediator_order),
+    level = factor(level, levels = level_order)
+  ) %>%
+  dplyr::select(
+    level, mediator,
+    outcome_key, acme_ci_prop, mediation_sig
+  ) %>%
+  pivot_wider(
+    names_from = outcome_key,
+    values_from = c(acme_ci_prop, mediation_sig),
+    names_glue = "{.value}_{outcome_key}"
+  ) %>%
+  mutate(
+    across(starts_with("acme_ci_prop_"), ~ coalesce(.x, "—")),
+    across(starts_with("mediation_sig_"), ~ coalesce(.x, FALSE))
+  ) %>%
+  arrange(level, mediator)
+
+mediation_cols <- paste0("acme_ci_prop_", outcome_columns$key)
+sig_cols <- paste0("mediation_sig_", outcome_columns$key)
+
+column_labels <- c(
+  stats::setNames(
+    rep(list(html("ACME [95% CI]<br>(Prop. mediated)")), nrow(outcome_columns)),
+    mediation_cols
+  )
+)
+
+h4_gt <- h4_wide %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s7") %>%
+  cols_hide(all_of(sig_cols)) %>%
+  cols_label(.list = column_labels) %>%
+  tab_source_note("Bold ACME results indicate a 95% confidence interval excluding zero.") %>%
+  cols_width(
+    mediator ~ px(210),
+    all_of(mediation_cols) ~ px(400)
+  ) %>%
   cols_align(
-    align = "left",
-    columns = dv
+    align = "center",
+    columns = all_of(mediation_cols)
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(EstCI_Lag1, p_val_Lag1), rows = sig_Lag1)
+    locations = cells_row_groups()
+  ) %>%
+  tab_style(
+    style = cell_text(indent = px(20)),
+    locations = cells_stub()
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(EstCI_Lag2, p_val_Lag2), rows = sig_Lag2)
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = c(EstCI_Lag3, p_val_Lag3), rows = sig_Lag3)
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_spanners(spanners = "Lag 1")
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_spanners(spanners = "Lag 2")
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_spanners(spanners = "Lag 3")
-  ) %>%
-  fmt_markdown(columns = c(p_val_Lag1, p_val_Lag2, p_val_Lag3)) %>%
-  tab_options(
-    data_row.padding = px(4),
-    table.width = pct(72),
-    table.border.top.style = "solid",
-    table.border.top.width = px(2),
-    table.border.bottom.style = "solid",
-    table.border.bottom.width = px(2),
-    column_labels.border.top.style = "solid",
-    column_labels.border.top.width = px(2),
-    column_labels.border.bottom.style = "solid",
-    column_labels.border.bottom.width = px(2),
-    table_body.hlines.style = "none",
-    table_body.vlines.style = "none",
-    stub.border.style = "none",
-    row.striping.background_color = NULL
-  ) %>%
-  apply_supplementary_table_style(table_width = pct(95))
+    locations = cells_stub(
+      rows = mediator == "All Apps" |
+        (mediator == "Social Media" & level != "Momentary")
+    )
+  )
 
+for (i in seq_len(nrow(outcome_columns))) {
+  mediation_col <- mediation_cols[[i]]
+  sig_col <- sig_cols[[i]]
 
-gt_table
+  h4_gt <- h4_gt %>%
+    tab_spanner(
+      label = md(paste0("**", outcome_columns$outcome[[i]], "**")),
+      columns = all_of(mediation_col)
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(
+        columns = all_of(mediation_col),
+        rows = !!rlang::sym(sig_col)
+      )
+    )
+}
 
-gtsave(gt_table, "Plots/tables_s8.png", vwidth = 2000)
+h4_gt <- h4_gt %>%
+  apply_supplementary_table_style(table_width = px(3810)) %>%
+  tab_options(table.font.size = px(34)) %>%
+  opt_css(
+    css = paste0(
+      "#table_s7 th[id^='acme_ci_prop_'], ",
+      "#table_s7 td[headers*='acme_ci_prop_'] { ",
+      "padding-left: 1px !important; ",
+      "padding-right: 10px !important; ",
+      "white-space: pre-line !important; ",
+      "text-align: center !important; }"
+    )
+  )
+
+h4_gt
+
+gtsave(
+  h4_gt,
+  "Plots/tables_s8.png",
+  vwidth = 4110,
+  vheight = 0
+)

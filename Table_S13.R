@@ -1,152 +1,226 @@
+#############################################
+#
+#       Table S13
+#       Age associations with ANES variables
+# Platform frequency: survey-weighted proportional-odds logistic regression.
+# PO and wellbeing: survey-weighted standardized linear regression.
+# Age is standardized using survey weights in every model.
+#
+#############################################
+
 library(dplyr)
+library(tidyr)
 library(gt)
-library(purrr)
-library(webshot2)
-library(chromote)
 library(survey)
 
 source("supplementary_table_style.R")
 
 #############################################
-#       Table S13
-#       ANES descriptive statistics: social media use
+# Load data
 
 anes_w3 <- read.csv("anes_w3.csv")
-anes_design <- svydesign(
-  ids = ~1,
-  weights = ~w3weight,
-  data = anes_w3 %>% filter(!is.na(w3weight))
-)
+
+#############################################
+# Format helpers
+
+format_decimal <- function(x, digits = 3) {
+  out <- sprintf(paste0("%.", digits, "f"), x)
+  gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", out, perl = TRUE)
+}
+
+format_p <- function(p) {
+  case_when(
+    is.na(p) ~ "",
+    p < .001 ~ "<.001",
+    TRUE ~ format_decimal(p, 3)
+  )
+}
 
 #############################################
 # Define variables
 
-mediator_vars <- c(
-  "total_platform_frequency",
+cor_vars <- c(
+  "political_orientation",
   "facebook_frequency",
   "instagram_frequency",
   "reddit_frequency",
   "tiktok_frequency",
+  "twitter_frequency",
   "youtube_frequency",
-  "twitter_frequency"
+  "loneliness",
+  "anhedonia",
+  "depression"
 )
 
-mediator_labels <- c(
-  "total_platform_frequency" = "Social Media",
+var_labels <- c(
+  "political_orientation" = "Political Orientation",
   "facebook_frequency" = "Facebook",
   "instagram_frequency" = "Instagram",
   "reddit_frequency" = "Reddit",
   "tiktok_frequency" = "TikTok",
+  "twitter_frequency" = "Twitter",
   "youtube_frequency" = "YouTube",
-  "twitter_frequency" = "Twitter"
+  "loneliness" = "Loneliness (r)",
+  "anhedonia" = "Anhedonia (r)",
+  "depression" = "Depression (r)"
 )
 
-mediator_order <- c(
-  "Social Media",
-  "Facebook",
-  "Instagram",
-  "Reddit",
-  "TikTok",
-  "YouTube",
-  "Twitter"
+var_sections <- c(
+  "political_orientation" = "Political Orientation",
+  "facebook_frequency" = "Social Media Use",
+  "instagram_frequency" = "Social Media Use",
+  "reddit_frequency" = "Social Media Use",
+  "tiktok_frequency" = "Social Media Use",
+  "twitter_frequency" = "Social Media Use",
+  "youtube_frequency" = "Social Media Use",
+  "loneliness" = "Wellbeing Outcomes",
+  "anhedonia" = "Wellbeing Outcomes",
+  "depression" = "Wellbeing Outcomes"
+)
+
+section_order <- c(
+  "Political Orientation",
+  "Social Media Use",
+  "Wellbeing Outcomes"
 )
 
 #############################################
-# Descriptive statistics
+#############################################
+# Survey-weighted associations with age
 
-svy_mean_var <- function(var) {
-  as.numeric(coef(svymean(as.formula(paste0("~", var)), anes_design, na.rm = TRUE)))
+weighted_z <- function(x, w) {
+  mean_x <- weighted.mean(x, w, na.rm = TRUE)
+  sd_x <- sqrt(sum(w * (x - mean_x)^2, na.rm = TRUE) / sum(w, na.rm = TRUE))
+  (x - mean_x) / sd_x
 }
 
-svy_sd_var <- function(var) {
-  sqrt(as.numeric(coef(svyvar(as.formula(paste0("~", var)), anes_design, na.rm = TRUE))))
+age_association <- function(variable) {
+  model_data <- anes_w3 %>%
+    dplyr::select(age, value = all_of(variable), w3weight) %>%
+    na.omit()
+
+  model_data <- model_data %>%
+    filter(is.finite(w3weight), w3weight > 0) %>%
+    mutate(age_z = weighted_z(age, w3weight))
+  is_platform <- grepl("_frequency$", variable)
+  if (is_platform) {
+    stopifnot(all(model_data$value %in% 1:7))
+    model_data$frequency <- ordered(model_data$value, levels = 1:7)
+  } else {
+    model_data$value_z <- weighted_z(model_data$value, model_data$w3weight)
+  }
+  design <- svydesign(ids = ~1, weights = ~w3weight, data = model_data)
+  if (is_platform) {
+    model <- svyolr(frequency ~ age_z, design = design, method = "logistic",
+                    control = list(maxit = 1000, reltol = 1e-10))
+    estimate <- unname(coef(model)["age_z"])
+    se <- sqrt(vcov(model)["age_z", "age_z"])
+    df <- df.residual(model)
+    statistic <- estimate / se
+    p <- 2 * pt(abs(statistic), df = df, lower.tail = FALSE)
+    interval <- estimate + c(-1, 1) * qt(.975, df) * se
+  } else {
+    model <- svyglm(value_z ~ age_z, design = design)
+    coefficient <- summary(model)$coefficients["age_z", ]
+    estimate <- unname(coefficient[1])
+    se <- unname(coefficient[2])
+    statistic <- unname(coefficient[3])
+    p <- unname(coefficient[4])
+    df <- df.residual(model)
+    interval <- as.numeric(confint(model, parm = "age_z"))
+  }
+
+  tibble(
+    variable = variable,
+    n = nrow(model_data),
+    estimate = estimate,
+    se = unname(se),
+    t = statistic,
+    p = p,
+    df = df,
+    ci_low = interval[1],
+    ci_high = interval[2]
+  )
 }
 
-make_anes_desc <- function(df, vars, labels, id_col = "caseid") {
-  map_dfr(vars, function(v) {
-    df %>%
-      summarise(
-        Variable = labels[[v]],
-        `N Participants` = n_distinct(.data[[id_col]][!is.na(.data[[v]])]),
-        `N Observations` = sum(!is.na(.data[[v]])),
-        Mean = svy_mean_var(v),
-        SD = svy_sd_var(v),
-        Min = suppressWarnings(min(.data[[v]], na.rm = TRUE)),
-        Max = suppressWarnings(max(.data[[v]], na.rm = TRUE)),
-        .groups = "drop"
-      )
-  })
-}
+age_results <- bind_rows(lapply(cor_vars, age_association))
 
-anes_mediator_desc <- make_anes_desc(
-  anes_w3,
-  mediator_vars,
-  mediator_labels
-)
-
-table_df <- bind_rows(
-  anes_mediator_desc %>%
-    filter(Variable == "Social Media") %>%
-    mutate(Level = "ANES Wave 3", .before = 1),
-  anes_mediator_desc %>%
-    filter(Variable != "Social Media") %>%
-    mutate(
-      Variable = factor(Variable, levels = mediator_order),
-      Level = "ANES Wave 3",
-      .before = 1
-    ) %>%
-    arrange(Variable)
-) %>%
+cor_df <- age_results %>%
   mutate(
-    Variable_raw = as.character(Variable),
-    Variable = factor(Variable_raw, levels = mediator_order)
+    section = factor(unname(var_sections[variable]), levels = section_order),
+    variable = factor(unname(var_labels[variable]), levels = unname(var_labels[cor_vars])),
+    est_ci = paste0(
+      format_decimal(estimate, 3),
+      " [",
+      format_decimal(ci_low, 3),
+      ", ",
+      format_decimal(ci_high, 3),
+      "]"
+    ),
+    p_fmt = format_p(p),
+    sig = p <= 0.05,
+    row_type = "measure",
+    row_label = as.character(variable),
+    row_order = as.integer(variable)
   ) %>%
-  arrange(Variable)
+  arrange(section, variable) %>%
+  dplyr::select(section, row_type, row_label, row_order, est_ci, p_fmt, sig)
 
-write.csv(
-  table_df %>% select(-Variable_raw),
-  "anes_w3_mediator_descriptives.csv",
-  row.names = FALSE
-)
+headers <- cor_df %>%
+  distinct(section) %>%
+  mutate(
+    row_type = "section",
+    row_label = "\u00a0",
+    row_order = 0L,
+    est_ci = "\u00a0",
+    p_fmt = "\u00a0",
+    sig = FALSE
+  )
+
+table_df <- bind_rows(headers, cor_df) %>%
+  mutate(row_type = factor(row_type, levels = c("section", "measure"))) %>%
+  arrange(section, row_type, row_order)
 
 #############################################
 # Create gt table
 
-tbl_anes_mediators <- table_df %>%
+table_s13 <- table_df %>%
   gt() %>%
-  tab_header(title = NULL, subtitle = NULL) %>%
-  cols_hide(c("Level", "Variable_raw", "N Observations")) %>%
-  cols_label(Variable = "Variable") %>%
-  sub_missing(
-    columns = c("N Participants", "N Observations", "Mean", "SD", "Min", "Max"),
-    missing_text = ""
+  cols_hide(c(section, row_type, row_order, sig)) %>%
+  cols_label(
+    row_label = "",
+    est_ci = "Estimate [95% CI]",
+    p_fmt = md("*p*")
+  ) %>%
+  cols_align("center", columns = c(est_ci, p_fmt)) %>%
+  cols_align("left", columns = row_label) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(rows = sig, columns = c(est_ci, p_fmt))
+  ) %>%
+  tab_style(
+    style = cell_text(indent = px(30)),
+    locations = cells_body(rows = row_type == "measure", columns = row_label)
+  ) %>%
+  tab_style(
+    style = cell_text(size = px(18)),
+    locations = cells_body(rows = row_type == "section")
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_column_labels(everything())
   ) %>%
-  tab_style(
-    style = cell_text(style = "italic"),
-    locations = cells_body(
-      rows = Variable_raw == "",
-      columns = "Variable"
-    )
-  ) %>%
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(
-      rows = Variable_raw == "Social Media",
-      columns = "Variable"
-    )
-  ) %>%
-  fmt_number(columns = c("Mean", "SD", "Min", "Max"), decimals = 2) %>%
-  fmt_number(columns = c("N Participants", "N Observations"), decimals = 0, use_seps = TRUE) %>%
-  cols_align("center", columns = everything()) %>%
-  cols_align("left", columns = "Variable") %>%
   apply_supplementary_table_style()
 
+#############################################
+# Save table
+
+if (!requireNamespace("webshot2", quietly = TRUE)) {
+  stop("The webshot2 package is required to save gt tables as PNG files.")
+}
+
 gtsave(
-  tbl_anes_mediators,
+  table_s13,
   "Plots/tables_s13.png",
   vwidth = SUPPLEMENTARY_TABLE_VWIDTH,
   vheight = 0
