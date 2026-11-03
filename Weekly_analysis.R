@@ -7,32 +7,34 @@
 
 # Packages
 library(dplyr)
-library(stringr)
 library(tidyr)
-library(lme4)
-library(mediation)
-library(purrr)
-library(readr)
-library(lubridate)
 library(mlma)
-library(multilevelmediation)
-# install.packages("mlma")
 library(future)
-# install.packages("future")
-library(future.apply)
-# install.packages("future.apply")
-library(progressr)
-# install.packages("progressr")
-# install.packages("furrr")
 library(furrr)
-# install.packages("tictoc")
 library(tictoc)
-
 library(lmerTest)    # For p-values in multilevel models
 library(performance) # For R-squared in multilevel models
-# install.packages("performance")
-library(WebPower)
-# install.packages("WebPower")
+
+set.seed(42)
+
+# To run the weekly analysis directly from this script, uncomment and edit
+# the entire options block below. These settings match the primary analyses
+# in the manuscript. Then run the whole script.
+#
+# If running through Study1_master_analysis.R, leave this block commented out
+# and edit the settings there instead.
+
+# options(
+#   coco.analysis_iv = "political_orientation",
+#   coco.include_controls = TRUE,
+#   coco.control_vars = c("gender", "ethnicity", "ses"),
+#   coco.n_sims = 1000,
+#   coco.ci_level = 0.95,
+#   coco.ema_exclude_col = "ema_50_exclude",
+#   coco.save_file_name = "weekly_results_withcontrols.csv"
+# )
+#
+# Input: weekly.csv. Output: weekly_results_withcontrols.csv.
 
 ##############################################
 # Analysis parameters
@@ -44,38 +46,28 @@ n_sims <- getOption("coco.n_sims", getOption("appusage.n_sims", if (exists("n_si
 ci_level <- getOption("coco.ci_level", getOption("appusage.ci_level", if (exists("ci_level", inherits = FALSE)) ci_level else 0.95))
 ema_exclude_col <- getOption("coco.ema_exclude_col", getOption("appusage.ema_exclude_col", if (exists("ema_exclude_col", inherits = FALSE)) ema_exclude_col else "ema_50_exclude")) # primary = ema_50_exclude; robustness = ema_40_exclude or ema_60_exclude
 
-# Output filename guide:
-# Primary IV = political_orientation
-#   include_controls = FALSE, ema_exclude_col = "ema_50_exclude":
-#     "weekly_results_nocontrols.csv"
-#   include_controls = TRUE, ema_exclude_col = "ema_50_exclude":
-#     "weekly_results_withcontrols.csv"
-#   include_controls = FALSE, ema_exclude_col = "ema_40_exclude":
-#     "weekly_results_nocontrols_40ema.csv"
-#   include_controls = FALSE, ema_exclude_col = "ema_60_exclude":
-#     "weekly_results_nocontrols_60ema.csv"
-#
-# Alternative IVs, no controls:
-#   analysis_iv = "authoritarianism":
-#     "weekly_results_nocontrols_authoritarianism.csv"
-#   analysis_iv = "party_affiliation_t1":
-#     "weekly_results_nocontrols_party_affiliation.csv"
-#   analysis_iv = "presidential_support":
-#     "weekly_results_nocontrols_presidential_support.csv"
+# See Study1_master_analysis.R for the intended runs and output filenames.
 
-save_file_name <- getOption("coco.save_file_name", getOption("appusage.save_file_name", if (exists("save_file_name", inherits = FALSE)) save_file_name else "weekly_results_nocontrols_presidential_support.csv"))
+save_file_name <- getOption("coco.save_file_name", getOption("appusage.save_file_name", if (exists("save_file_name", inherits = FALSE)) save_file_name else "weekly_results_withcontrols.csv"))
 diagnostic_progress <- getOption("coco.diagnostic_progress", getOption("appusage.diagnostic_progress", if (exists("diagnostic_progress", inherits = FALSE)) diagnostic_progress else FALSE))
 
 ##############################################
 # Load data
-weekly_df = read.csv("weekly.csv")
+# Primary analyses use weekly.csv (explicit app non-use coded as NA).
+# The master selects weekly_nonuse_zero.csv for Table S11 using
+# coco.weekly_input_file; other runs default to weekly.csv.
+# To run the zero-coding analysis directly, set that option to
+# "weekly_nonuse_zero.csv" and use the corresponding output filename.
+# The older weekly_missingisNA.csv is not the primary submitted dataset.
+# weekly_missingisZERO.csv is identical to weekly_nonuse_zero.csv.
+weekly_df = read.csv(getOption("coco.weekly_input_file", "weekly.csv"))
 # weekly_df = read.csv("weekly_missingisNA.csv")
 # weekly_df = read.csv("weekly_missingisZERO.csv")
 
 
 # Global variables
 
-# Define variables for weekly descriptives
+# Define weekly wellbeing outcomes
 dv_vars <- c("awb_week", "angry_rev", "worried_rev", "happy", "sad_rev", "stressed_rev", "lonely_rev", "accepted")
 
 mediators <- c(
@@ -135,30 +127,15 @@ run_one_mediation <- function(M, Y, controls_to_include = NULL) {
     " | ", variance_summary
   )
   
-  # if (nrow(model_data) < 50) return(NULL)
   # Random-intercept level id
   model_data$level <- as.numeric(factor(model_data$id))
   
-  # SCALE mediator and outcome (z-scores)
+  # Standardise mediator and outcome within this model's complete-case sample.
   # Keep original columns; add standardized versions
   Mz <- paste0(M,  "_z")
   Yz <- paste0(Y,  "_z")
   model_data[[Mz]] <- as.numeric(scale(model_data[[M]]))
   model_data[[Yz]] <- as.numeric(scale(model_data[[Y]]))
-  
-  # drop controls with only 1 level (e.g., there may only be white or male in a particular sample)
-  # if (!is.null(controls_to_include) && length(controls_to_include) > 0) {
-  #   valid_controls <- controls_to_include[
-  #     sapply(model_data[controls_to_include], function(x) length(unique(x)) > 1)
-  #   ]
-  # } else {
-  #   valid_controls <- NULL
-  # } 
-  # # Rebuild the control string using only valid controls
-  # controls_str <- if (!is.null(valid_controls) && length(valid_controls) > 0) {
-  #   paste(valid_controls, collapse = " + ")
-  # } else ""
-  # 
   
   # Build model formulas
   controls_str <- if (!is.null(controls_to_include) && length(controls_to_include) > 0) paste(controls_to_include, collapse = " + ") else ""
@@ -313,7 +290,7 @@ run_one_mediation <- function(M, Y, controls_to_include = NULL) {
 }
 
 
-# --- EXECUTION ---
+# Run analyses in parallel
 
 # Create the vector of controls to use
 controls_to_include <- if (include_controls) control_vars else NULL

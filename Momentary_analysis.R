@@ -8,32 +8,33 @@
 
 # Packages
 library(dplyr)
-library(stringr)
 library(tidyr)
-library(lme4)
-library(mediation)
-library(purrr)
-library(readr)
-library(lubridate)
 library(mlma)
-library(multilevelmediation)
-# install.packages("mlma")
 library(future)
-# install.packages("future")
-library(future.apply)
-# install.packages("future.apply")
-library(progressr)
-# install.packages("progressr")
-# install.packages("furrr")
 library(furrr)
-# install.packages("tictoc")
 library(tictoc)
-
 library(lmerTest)    # For p-values in multilevel models
 library(performance) # For R-squared in multilevel models
-# install.packages("performance")
-library(WebPower)
-# install.packages("WebPower")
+
+set.seed(42)
+
+# To run the momentary analysis directly from this script, uncomment and edit
+# the entire options block below. These settings match the primary analyses
+# in the manuscript. Then run the whole script.
+#
+# If running through Study1_master_analysis.R, leave this block commented out
+# and edit the settings there instead.
+
+# options(
+#   coco.analysis_iv = "political_orientation",
+#   coco.include_controls = TRUE,
+#   coco.control_vars = c("gender", "ethnicity", "ses"),
+#   coco.n_sims = 1000,
+#   coco.ci_level = 0.95,
+#   coco.save_file_name = "momentary_results_withcontrols.csv"
+# )
+#
+# Input: Momentary.csv. Output: momentary_results_withcontrols.csv.
 
 #############################################
 # Analysis parameters
@@ -44,28 +45,14 @@ control_vars <- getOption("coco.control_vars", getOption("appusage.control_vars"
 n_sims <- getOption("coco.n_sims", getOption("appusage.n_sims", if (exists("n_sims", inherits = FALSE)) n_sims else 1000))
 ci_level <- getOption("coco.ci_level", getOption("appusage.ci_level", if (exists("ci_level", inherits = FALSE)) ci_level else 0.95))
 
-# Output filename guide:
-# Primary IV = political_orientation
-#   include_controls = FALSE:
-#     "momentary_results_nocontrols.csv"
-#   include_controls = TRUE:
-#     "momentary_results_withcontrols.csv"
-#
-# Alternative IVs, no controls:
-#   analysis_iv = "authoritarianism":
-#     "momentary_results_nocontrols_authoritarianism.csv"
-#   analysis_iv = "party_affiliation_t1":
-#     "momentary_results_nocontrols_party_affiliation.csv"
-#   analysis_iv = "presidential_support":
-#     "momentary_results_nocontrols_presidential_support.csv"
-#
+# See Study1_master_analysis.R for the intended runs and output filenames.
 
 save_file_name <- getOption("coco.save_file_name", getOption("appusage.save_file_name", if (exists("save_file_name", inherits = FALSE)) save_file_name else "momentary_results_nocontrols.csv"))
 
 #############################################
 
 # load data
-momentary_df = read.csv("momentary.csv")
+momentary_df = read.csv("Momentary.csv")
 
 
 # Global variables
@@ -93,7 +80,7 @@ run_one_mediation <- function(M, Y, controls_to_include = NULL) {
   if (nrow(model_data) < 50) return(NULL)
   model_data$level <- as.numeric(factor(model_data$id))
   
-  # SCALE mediator and outcome (z-scores)
+  # Standardise mediator and outcome within this model's complete-case sample.
   # Keep original columns; add standardized versions
   Mz <- paste0(M,  "_z")
   Yz <- paste0(Y,  "_z")
@@ -240,7 +227,7 @@ run_one_mediation <- function(M, Y, controls_to_include = NULL) {
   )
 }
 
-# --- EXECUTION ---
+# Run analyses in parallel
 
 # Create the vector of controls to use
 controls_to_include <- if (include_controls) control_vars else NULL

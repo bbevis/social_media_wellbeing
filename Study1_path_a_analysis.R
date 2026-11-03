@@ -1,8 +1,26 @@
 #############################################
 #
-#       Study 1 standalone path a models
+#       Study 1: political orientation predicting media use (path a)
 #
 #############################################
+
+# Estimates the association between political orientation and media use (H2)
+# at the monthly, weekly, and momentary levels. Unlike path a in the mediation
+# scripts, these models do not require complete wellbeing outcome data.
+# Monthly models use linear regression; weekly and momentary models use
+# participant random intercepts to account for repeated observations.
+#
+# To run these analyses directly from this script, edit the parameters below.
+# Content.R also runs this script separately from Study1_master_analysis.R.
+# Inputs: monthly.csv, weekly.csv, and Momentary.csv.
+# Output: study1_path_a_results.csv.
+#
+# Results are read by the scripts for Figure 4, Figure S1, Tables S3 and S4,
+# and the Figure S3 digital-media mediation plot:
+#   fig_PO_mediators.R
+#   fig_PO_digital_media_mediators.R
+#   Table_S3.R and Table_S4.R
+#   fig_app_category_mediation_bubble_map.R
 
 library(dplyr)
 library(tidyr)
@@ -10,7 +28,7 @@ library(lmerTest)
 library(performance)
 
 ##############################################
-# Parameters
+# Parameters: predictor, demographic controls, confidence level, and output
 
 path_a_iv <- "political_orientation"
 path_a_controls <- c("gender", "ethnicity", "ses")
@@ -48,7 +66,7 @@ momentary_mediators <- "sm_minutes"
 
 monthly_path_a_data <- read.csv("monthly.csv")
 weekly_path_a_data <- read.csv("weekly.csv")
-momentary_path_a_data <- read.csv("momentary.csv")
+momentary_path_a_data <- read.csv("Momentary.csv")
 
 ##############################################
 
@@ -243,7 +261,7 @@ run_momentary_path_a <- function(mediator) {
 }
 
 ##############################################
-# Run models
+# Run path a models and save results
 
 study1_path_a_results <- bind_rows(
   lapply(monthly_weekly_mediators, run_monthly_path_a),

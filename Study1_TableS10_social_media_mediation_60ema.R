@@ -1,0 +1,227 @@
+#############################################
+#
+# Table S10: Weekly social media mediation: 60% EMA threshold
+#
+#############################################
+
+# Load packages and shared table styling
+
+library(dplyr)
+library(gt)
+source("supplementary_table_style.R")
+library(tidyr)
+
+#############################################
+# Load analysis results
+# Use weekly results with a 60% EMA completion threshold and without
+# demographic controls. These are produced by the corresponding optional
+# analysis in Study1_master_analysis.R. Select overall social media use
+# and seven platforms; bold ACME results when the finite confidence limits
+# exclude zero.
+
+weekly_nc_60 <- read.csv("weekly_results_nocontrols_60ema.csv")
+
+platforms <- c(
+  "total_platform",
+  "facebook", "twitter", "tiktok", "instagram", "youtube", "reddit", "snapchat"
+)
+
+#############################################
+# Select and summarise mediation estimates
+
+h4_df <- weekly_nc_60 %>%
+  dplyr::select(
+    mediator, outcome,
+    ACME, prop_mediated, ACME_CI_lower, ACME_CI_upper
+  ) %>%
+  filter(mediator %in% platforms) %>%
+  group_by(mediator, outcome) %>%
+  summarise(
+    acme = mean(ACME),
+    acme_lwr = mean(ACME_CI_lower, na.rm = TRUE),
+    acme_upr = mean(ACME_CI_upper, na.rm = TRUE),
+    prop_mediated = mean(prop_mediated),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    level = factor("Weekly", levels = "Weekly"),
+    acme_sig = (acme_lwr > 0 | acme_upr < 0) &
+      is.finite(acme_lwr) & is.finite(acme_upr),
+    mediation_sig = acme_sig,
+    mediator = case_when(
+      mediator == "total_platform" ~ "Social Media",
+      TRUE ~ mediator
+    ),
+    outcome = dplyr::recode(
+      outcome,
+      "awb_week" = "Affective Wellbeing",
+      "angry_rev" = "Angry (r)",
+      "worried_rev" = "Worried (r)",
+      "happy" = "Happy",
+      "sad_rev" = "Sad (r)",
+      "stressed_rev" = "Stressed (r)",
+      "lonely_rev" = "Lonely (r)",
+      "accepted" = "Accepted"
+    ),
+    mediator = tools::toTitleCase(mediator),
+    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube")
+  )
+
+outcome_order <- c(
+  "Affective Wellbeing",
+  "Accepted",
+  "Angry (r)",
+  "Happy",
+  "Lonely (r)",
+  "Sad (r)",
+  "Stressed (r)",
+  "Worried (r)"
+)
+
+mediator_order <- c(
+  "Social Media",
+  "Facebook", "Instagram", "Reddit", "Snapchat", "TikTok", "Twitter", "YouTube"
+)
+
+h4_df <- h4_df %>%
+  mutate(
+    mediator = factor(mediator, levels = mediator_order),
+    outcome = factor(outcome, levels = outcome_order)
+  ) %>%
+  filter(!is.na(mediator), !is.na(outcome))
+
+stopifnot(!anyNA(h4_df$mediation_sig))
+
+#############################################
+# Format estimates and significance for the table
+
+# Display ACME and confidence limits to three decimals and percentage
+# mediated to two decimals, retaining the existing leading-zero formatting.
+h4_for_gt <- h4_df %>%
+  mutate(
+    acme_ci_prop = sprintf(
+      "%.3f [%.3f, %.3f]\n(%.2f%%)",
+      acme, acme_lwr, acme_upr, prop_mediated * 100
+    )
+  ) %>%
+  dplyr::select(
+    level, mediator, outcome,
+    acme_ci_prop, mediation_sig
+  ) %>%
+  mutate(across(where(is.character),
+                ~ gsub("(^|\\s|-|\\[|,)0\\.", "\\1.", .x, perl = TRUE))) %>%
+  arrange(outcome, mediator)
+
+#############################################
+# Create the wide table with wellbeing outcomes across columns
+
+outcome_columns <- tibble::tribble(
+  ~outcome,                ~key,
+  "Affective Wellbeing",  "affective_wellbeing",
+  "Accepted",             "accepted",
+  "Angry (r)",            "angry",
+  "Happy",                "happy",
+  "Lonely (r)",           "lonely",
+  "Sad (r)",              "sad",
+  "Stressed (r)",         "stressed",
+  "Worried (r)",          "worried"
+)
+
+h4_wide <- h4_for_gt %>%
+  mutate(
+    outcome = as.character(outcome),
+    outcome_key = outcome_columns$key[match(outcome, outcome_columns$outcome)],
+    mediator = factor(mediator, levels = mediator_order)
+  ) %>%
+  dplyr::select(
+    level, mediator,
+    outcome_key, acme_ci_prop, mediation_sig
+  ) %>%
+  pivot_wider(
+    names_from = outcome_key,
+    values_from = c(acme_ci_prop, mediation_sig),
+    names_glue = "{.value}_{outcome_key}"
+  ) %>%
+  mutate(
+    across(starts_with("acme_ci_prop_"), ~ coalesce(.x, "—")),
+    across(starts_with("mediation_sig_"), ~ coalesce(.x, FALSE))
+  ) %>%
+  arrange(mediator)
+
+mediation_cols <- paste0("acme_ci_prop_", outcome_columns$key)
+sig_cols <- paste0("mediation_sig_", outcome_columns$key)
+
+column_labels <- c(
+  stats::setNames(
+    rep(list(html("ACME [95% CI]<br>(Prop. mediated)")), nrow(outcome_columns)),
+    mediation_cols
+  )
+)
+
+h4_gt <- h4_wide %>%
+  gt(rowname_col = "mediator", groupname_col = "level", id = "table_s17") %>%
+  cols_hide(all_of(sig_cols)) %>%
+  cols_label(.list = column_labels) %>%
+  cols_width(
+    mediator ~ px(210),
+    all_of(mediation_cols) ~ px(400)
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = all_of(mediation_cols)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups()
+  ) %>%
+  tab_style(
+    style = cell_text(indent = px(20)),
+    locations = cells_stub()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub(rows = mediator == "Social Media")
+  )
+
+for (i in seq_len(nrow(outcome_columns))) {
+  mediation_col <- mediation_cols[[i]]
+  sig_col <- sig_cols[[i]]
+
+  h4_gt <- h4_gt %>%
+    tab_spanner(
+      label = md(paste0("**", outcome_columns$outcome[[i]], "**")),
+      columns = all_of(mediation_col)
+    ) %>%
+    tab_style(
+      style = cell_text(weight = "bold"),
+      locations = cells_body(
+        columns = all_of(mediation_col),
+        rows = !!rlang::sym(sig_col)
+      )
+    )
+}
+
+h4_gt <- h4_gt %>%
+  apply_supplementary_table_style(table_width = px(3410)) %>%
+  tab_options(table.font.size = px(34)) %>%
+  opt_css(
+    css = paste0(
+      "#table_s17 th[id^='acme_ci_prop_'], ",
+      "#table_s17 td[headers*='acme_ci_prop_'] { ",
+      "padding-left: 1px !important; ",
+      "padding-right: 10px !important; ",
+      "white-space: pre-line !important; ",
+      "text-align: center !important; }"
+    )
+  )
+
+h4_gt
+
+# Save Table S10
+
+gtsave(
+  h4_gt,
+  "Plots/Study1_TableS10_social_media_mediation_60ema.png",
+  vwidth = 3710,
+  vheight = 0
+)

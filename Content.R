@@ -4,66 +4,78 @@
 #       
 #############################################
 
+#############################################
 # Study 1
-# Build datasets
-# source("Monthly_build.R")
-# source("Weekly_build.R")
-# source("Momentary_build.R")
+#############################################
 
-# Exploratory descriptive stats
-source("Demographics.R")
-source("Desc_stats_iv.R")
-source("Desc_stats_mediators.R")
-source("Desc_stats_outcomes.R")
+# Study 1: formatted datasets
+# Start with the shared monthly.csv, weekly.csv, and Momentary.csv datasets.
+# Dataset build scripts are not part of the shared replication workflow.
 
-# Mediation Analyses
-# For batch runs with automatic output filenames, use master_analysis.R.
-# The individual analysis scripts can still be run manually one at a time.
-# source("master_analysis.R") ## WARNING. Batch runtime can last for hours. Check master_analysis.R before running.
-source("Monthly_analysis.R")
-source("Weekly_analysis.R")
-source("Momentary_analysis.R") ## WARNING. RUNTIME LASTS FOR HOURS/DAYS!! ##
-source("Study1_path_a_analysis.R") # Standalone H2 path a models
+# Study 1: descriptive statistics
+source("Study1_demographics.R") # Sample characteristics, participation, and attrition footnote
+source("Study1_desc_stats_iv.R") # Prints political-orientation mean and SD; no file saved
+source("Study1_desc_stats_mediators.R") # Table 1 and media-use summaries by political group
+source("Study1_desc_stats_outcomes.R") # Table S1: wellbeing descriptive statistics
 
-# Study 2
-source("ANES_build.R")
-source("ANES_monotonic_analysis.R") # Ordinal categorical mediation with survey weights, 1,000 bootstrap replicates and age moderation (36 calls)
+# Study 1: primary and reported supplementary analyses
+# Runs the primary monthly, weekly and momentary analyses, then the
+# reported sensitivity analyses for Tables S9-S11. Unreported additional
+# analyses remain commented out inside Study1_master_analysis.R.
 
-# Plots
-source("fig_PO_wellbeing_effects.R") # H1 path c
-source("fig_PO_mediators.R") # H2 path a
-source("fig_b_path_by_outcome_facets.R") # H3 path b
-source("fig_ACME.R") # H4
-source("fig_usage_effects.R") # H4
-source("fig_ANES_social_media_distribution.R") # Frequency by age by platform
-# source("fig_ANES_PO_wellbeing_effects.R") # Uses older numeric-analysis outputs; update before enabling
-# source("fig_ANES_PO_mediators.R") # Uses older numeric-analysis outputs; update before enabling
-# source("fig_ANES_b_path_by_outcome_facets.R") # Uses older numeric-analysis outputs; update before enabling
-# source("fig_ANES.R") # Uses older numeric-analysis outputs; update before enabling
-# source("fig_ANES_age_moderation.R") # Uses older numeric-analysis outputs; update before enabling
+# WARNING: weekly and momentary bootstrap analyses can take hours or days.
+source("Study1_master_analysis.R") # Primary models and reported sensitivity analyses
+source("Study1_path_a_analysis.R") # H2 path a results for figures and tables
 
-# Supplementary materials
-source("Table_S2.R")
-source("Table_S3.R")
-source("Table_S4.R")
-source("Table_S5.R")
-source("Table_S6.R")
-source("fig_b_path_by_outcome_facets.R")
-source("Table_S7.R")
-source("Table_S8.R")
-# source("fig_ANES_b_path_by_outcome_facets.R") # Uses older numeric-analysis outputs; update before enabling
-source("Table_S9.R")
-source("Table_S10.R")
-source("Table_S11.R")
+# Study 1: main figures
+source("Study1_Figure3_PO_wellbeing.R") # Figure 3: Political orientation and wellbeing (H1)
+source("Study1_Figure4_PO_social_media.R") # Figure 4: Political orientation and social media use (H2)
+source("Study1_Figure5_social_media_wellbeing.R") # Figure 5: Social media use and wellbeing (H3)
+source("Study1_Figure6_social_media_mediation.R") # Figure 6: Social media mediation (H4)
 
-# ANES data
-source("Table_S12.R")
-# source("fig_ANES_PO_wellbeing_effects.R") # Uses older numeric-analysis outputs; update before enabling
-# source("fig_ANES_PO_mediators.R") # Uses older numeric-analysis outputs; update before enabling
-source("Table_S13.R") # Age associations (ordinal logistic regression for social media use)
-source("Table_S14.R") # Political orientation -> wellbeing
-# source("fig_ANES_b_path_by_outcome_facets.R") # Uses older numeric-analysis outputs; update before enabling
-source("Table_S15.R") # Political orientation -> social media use (ordinal logistic regression)
-source("Table_S16.R") # Social media use -> wellbeing (frequency-category contrasts)
-source("Table_S17.R") # ACME mediation results
+# Study 1: supplementary figures
+source("Study1_FigureS1_PO_digital_media.R") # Figure S1: Political orientation and digital media use
+source("Study1_FigureS2_digital_media_wellbeing.R") # Figure S2: Digital media use and wellbeing
+source("Study1_FigureS3_digital_media_mediation.R") # Figure S3: Digital media mediation
+
+# Study 1: supplementary tables
+source("Study1_TableS2_PO_wellbeing.R") # Political orientation and wellbeing (H1)
+source("Study1_TableS3_PO_social_media.R") # Political orientation and social media use (H2)
+source("Study1_TableS4_PO_digital_media.R") # Political orientation and digital media use (H2)
+source("Study1_TableS5_social_media_wellbeing.R") # Social media use and wellbeing (H3)
+source("Study1_TableS6_digital_media_wellbeing.R") # Digital media use and wellbeing (H3)
+source("Study1_TableS7_social_media_mediation.R") # Social media mediation (H4)
+source("Study1_TableS8_digital_media_mediation.R") # Digital media mediation (H4)
+# Tables S9-S11 use the sensitivity results generated by
+# Study1_master_analysis.R.
+source("Study1_TableS9_social_media_mediation_40ema.R") # Weekly mediation with a 40% EMA threshold
+source("Study1_TableS10_social_media_mediation_60ema.R") # Weekly mediation with a 60% EMA threshold
+source("Study1_TableS11_social_media_mediation_nonuse_zero.R") # Weekly mediation with explicit nonuse coded as zero
+
+#############################################
+# Study 2 (ANES)
+#############################################
+
+# Study 2: formatted dataset
+# Use the shared anes_w3.csv dataset directly.
+# Uncomment below only to rebuild it from the original ANES export.
+# source("Study2_build.R")
+
+# Study 2: descriptive statistics
+source("Study2_desc_stats.R") # Sample characteristics, political orientation and wellbeing summaries
+
+# Study 2: mediation analyses
+# WARNING: 1,000 bootstrap replicates per model; these analyses may take a long time.
+source("Study2_analysis.R") # Ordinal mediation with survey weights and 1,000 bootstrap replicates (18 main models)
+
+# Study 2: supplementary figures
+source("Study2_FigureS4_social_media_distribution.R") # Figure S4: Social media use frequency by age group
+
+# Study 2: supplementary tables
+source("Study2_TableS12_social_media_distribution.R") # Social media frequency distributions
+source("Study2_TableS13_age_associations.R") # Age associations (ordinal logistic regression for social media use)
+source("Study2_TableS14_PO_wellbeing.R") # Political orientation -> wellbeing
+source("Study2_TableS15_PO_social_media.R") # Political orientation -> social media use (ordinal logistic regression)
+source("Study2_TableS16_social_media_wellbeing.R") # Social media use -> wellbeing (frequency-category contrasts)
+source("Study2_TableS17_social_media_mediation.R") # ACME mediation results
 

@@ -4,18 +4,29 @@
 #
 #############################################
 
+# To run the monthly analysis directly from this script, uncomment and edit
+# the entire options block below. These settings match the primary analyses
+# in the manuscript. Then run the whole script.
+#
+# If running through Study1_master_analysis.R, leave this block commented out
+# and edit the settings there instead.
+
+# options(
+#   coco.analysis_iv = "political_orientation",
+#   coco.include_controls = TRUE,
+#   coco.include_Ypre = FALSE,
+#   coco.control_vars = c("gender", "ethnicity", "ses"),
+#   coco.n_sims = 1000,
+#   coco.ci_level = 0.95,
+#   coco.save_file_name = "monthly_results_withcontrols.csv"
+# )
+#
+# Input: monthly.csv. Output: monthly_results_withcontrols.csv.
+
 library(dplyr)
-# library(stringr)
-# library(lme4)
-library(tidyr)
-# install.packages("mediation")
 library(mediation)
-# install.packages("multilevelmediation")
-# library(multilevelmediation)
-library(boot)
-# library(purrr)
-# library(psych)
-# library(pwr)
+
+set.seed(42)
 
 ##############################################
 # Analysis parameters
@@ -27,23 +38,7 @@ control_vars <- getOption("coco.control_vars", getOption("appusage.control_vars"
 n_sims <- getOption("coco.n_sims", getOption("appusage.n_sims", if (exists("n_sims", inherits = FALSE)) n_sims else 1000))
 ci_level <- getOption("coco.ci_level", getOption("appusage.ci_level", if (exists("ci_level", inherits = FALSE)) ci_level else 0.95))
 
-# Output filename guide:
-# Primary IV = political_orientation
-#   include_controls = FALSE, include_Ypre = FALSE:
-#     "monthly_results_nocontrols.csv"
-#   include_controls = TRUE, include_Ypre = FALSE:
-#     "monthly_results_withcontrols.csv"
-#
-# Alternative IVs, no controls:
-#   analysis_iv = "authoritarianism":
-#     "monthly_results_nocontrols_authoritarianism.csv"
-#   analysis_iv = "party_affiliation_t1":
-#     "monthly_results_nocontrols_party_affiliation.csv"
-#   analysis_iv = "presidential_support":
-#     "monthly_results_nocontrols_presidential_support.csv"
-#
-# Test runs:
-#   Use a temporary filename, e.g. "monthly_results_withcontrols_test20.csv"
+# See Study1_master_analysis.R for the intended runs and output filenames.
 
 save_file_name <- getOption("coco.save_file_name", getOption("appusage.save_file_name", if (exists("save_file_name", inherits = FALSE)) save_file_name else "monthly_results_nocontrols.csv"))
 
@@ -75,10 +70,10 @@ for (i in seq_along(outcomes)) {
   for (M in mediators) {
     exclusion_col <- paste0(M, "_exclude")
     
-    # Skip only if the mediator truly doesn't exist (not totals)
+    # Skip mediators absent from the dataset.
     if (!M %in% names(monthly_df)) next
     
-    # Apply exclusion only if the column exists
+    # Initial exclusion check; the final model sample is selected below.
     if (exclusion_col %in% names(monthly_df)) {
       model_data <- monthly_df %>% filter(.data[[exclusion_col]] == 0)
     } else {
@@ -97,9 +92,7 @@ for (i in seq_along(outcomes)) {
       dplyr::select(all_of(all_vars)) %>%
       na.omit()
     
-    # if (nrow(model_data) < 50) next
-    
-    # scale mediator and outcome (global z)
+    # Standardise mediator and outcome within this model's complete-case sample.
     Mz <- paste0(M, "_z")
     Yz <- paste0(Y, "_z")
     model_data[[Mz]] <- as.numeric(scale(model_data[[M]]))
