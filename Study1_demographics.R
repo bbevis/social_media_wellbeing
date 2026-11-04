@@ -387,7 +387,7 @@ po_groups <- attrition_po %>%
   mutate(percent = round(100 * n / sum(n), 1)) %>%
   ungroup() %>%
   mutate(group = if_else(with_followup, "Provided EMA or app duration", "Provided neither")) %>%
-  select(group, political_group, percent)
+  dplyr::select(group, political_group, percent)
 
 chi_square_summary <- tibble(
   metric = c("po_chisq_statistic", "po_chisq_df", "po_chisq_p_value"),

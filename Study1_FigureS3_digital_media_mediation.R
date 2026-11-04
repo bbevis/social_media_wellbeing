@@ -133,7 +133,7 @@ bubble_df <- bind_rows(
     ),
     mediator = tools::toTitleCase(mediator),
     mediator = factor(mediator, levels = mediator_order),
-    outcome = recode(outcome, !!!outcome_labels),
+    outcome = dplyr::recode(outcome, !!!outcome_labels),
     outcome = factor(outcome, levels = outcome_order),
     level = factor(level, levels = c("Weekly", "Monthly")),
     color_var = if_else(sig, as.character(mediator), "n.s."),

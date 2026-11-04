@@ -65,18 +65,18 @@ level_shape_vals <- c(
 
 base_df <- bind_rows(
   monthly_res %>%
-    select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+    dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
     mutate(level = "Monthly"),
   weekly_res %>%
-    select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+    dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
     mutate(level = "Weekly"),
   momentary_res %>%
-    select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+    dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
     mutate(level = "Momentary")
 ) %>%
   filter(mediator %in% mediators_to_plot) %>%
   mutate(
-    mediator = recode(
+    mediator = dplyr::recode(
       mediator,
       "total_platform" = "Social Media",
       "sm_minutes" = "Social Media",
@@ -84,8 +84,8 @@ base_df <- bind_rows(
       "social" = "Social"
     ),
     mediator = tools::toTitleCase(mediator),
-    mediator = recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube"),
-    outcome = recode(
+    mediator = dplyr::recode(mediator, "Tiktok" = "TikTok", "Youtube" = "YouTube"),
+    outcome = dplyr::recode(
       outcome,
       "awb_momentary" = "Affective Wellbeing",
       "awb_t2" = "Affective Wellbeing",

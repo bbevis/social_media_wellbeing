@@ -108,10 +108,10 @@ format_category_table <- function(df, var, labels, sample_label) {
       sample = sample_label,
       variable = var,
       category_value = as.character(.data[[var]]),
-      category = recode(category_value, !!!labels)
+      category = dplyr::recode(category_value, !!!labels)
     ) %>%
     left_join(percent_df, by = "category_value") %>%
-    select(sample, variable, category, n, percent)
+    dplyr::select(sample, variable, category, n, percent)
 }
 
 describe_sample <- function(df, sample_label) {

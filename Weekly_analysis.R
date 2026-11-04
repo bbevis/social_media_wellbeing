@@ -15,7 +15,7 @@ library(tictoc)
 library(lmerTest)    # For p-values in multilevel models
 library(performance) # For R-squared in multilevel models
 
-set.seed(42)
+# set.seed(42)
 
 # To run the weekly analysis directly from this script, uncomment and edit
 # the entire options block below. These settings match the primary analyses

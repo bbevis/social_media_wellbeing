@@ -26,7 +26,7 @@
 library(dplyr)
 library(mediation)
 
-set.seed(42)
+# set.seed(42)
 
 ##############################################
 # Analysis parameters

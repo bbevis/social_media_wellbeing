@@ -116,7 +116,7 @@ ggplot(
     color = "grey90", linewidth = 0.3
   ) +
   geom_vline(xintercept = 0, color = "black", linetype = "dashed") +
-  geom_errorbarh(
+  ggstance::geom_errorbarh(
     aes(xmin = lwr, xmax = upr),
     height = .5,
     position = position_dodgev(height = .5)) +

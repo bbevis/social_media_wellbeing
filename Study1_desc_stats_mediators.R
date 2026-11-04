@@ -218,7 +218,7 @@ mediators_all <- bind_rows(momentary_desc, weekly_desc) %>%
 
 tbl_momentary <- mediators_all %>%
   filter(Level == "Momentary Level") %>%
-  mutate(Variable = recode(as.character(Variable), "Social Media Time" = "Social Media")) %>%
+  mutate(Variable = dplyr::recode(as.character(Variable), "Social Media Time" = "Social Media")) %>%
   rename(
     'N Participants' = `N participants`,
     'N Observations' = `N observations`

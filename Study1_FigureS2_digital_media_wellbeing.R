@@ -68,13 +68,13 @@ level_shape_vals <- c(
 
 base_df <- bind_rows(
   monthly_res %>%
-    select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+    dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
     mutate(level = "Monthly"),
   weekly_res %>%
-    select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+    dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
     mutate(level = "Weekly"),
   momentary_res %>%
-    select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
+    dplyr::select(mediator, outcome, path_b, path_b_CI_lower, path_b_CI_upper, path_b_p) %>%
     mutate(level = "Momentary")
 ) %>%
   filter(mediator %in% mediators_to_plot) %>%
@@ -88,12 +88,12 @@ base_df <- bind_rows(
     .groups = "drop"
   ) %>%
   mutate(
-    mediator = recode(
+    mediator = dplyr::recode(
       mediator,
       "total_activity" = "Overall Screentime"
     ),
     mediator = tools::toTitleCase(mediator),
-    outcome = recode(
+    outcome = dplyr::recode(
       outcome,
       "awb_momentary" = "Affective Wellbeing",
       "awb_t2" = "Affective Wellbeing",
